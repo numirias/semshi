@@ -2,9 +2,9 @@ from setuptools import setup
 
 
 setup(
-    name='python-semantic-syntax',
+    name='semshi',
     description='Real semantic syntax highlighting for Python',
-    packages=['sem'],
+    packages=['semshi'],
     author='numirias',
     author_email='numirias@users.noreply.github.com',
     version='0.1.0',

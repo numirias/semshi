@@ -7,6 +7,3 @@ hi semshiSelf ctermfg=249
 hi semshiImported ctermfg=214 cterm=bold
 hi semshiLocal ctermfg=209
 hi semshiAttr ctermfg=49
-
-" hi rc_param_self ctermfg=208
-" hi rc_param_self_unref ctermfg=208
