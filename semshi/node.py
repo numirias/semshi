@@ -138,8 +138,8 @@ class Node:
     def hl(self, marked=False):
         if marked:
             return (MARKED, self.lineno - 1, self.col, self.end, self.MARK_ID)
-        return (self.hl_group, self.lineno - 1, self.col, self.end, self.id)
-        # return (self.id, self.hl_group, self.lineno - 1, self.col, self.end)
+        # return (self.hl_group, self.lineno - 1, self.col, self.end, self.id)
+        return (self.id, self.hl_group, self.lineno - 1, self.col, self.end)
 
     def base_table(self):
         # logger.debug('base table of %d', self.id)
