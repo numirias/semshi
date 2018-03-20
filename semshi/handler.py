@@ -56,13 +56,13 @@ class BufferHandler:
         names_add, names_clear = self.parser.parse(code)
 
         # Remove nodes from add_pending which should be cleared
-        self._remove_pending_names(names_clear)
-
+        remaining = list(self._remove_pending_names_add(names_clear))
+        logger.debug('remaining %d', len((remaining)))
         visible_add, hidden_add = self._visible_and_hidden(names_add)
         # Add new adds which aren't visible to pending
         self.add_pending += hidden_add
 
-        self.update_highlights(visible_add, names_clear)
+        self.update_highlights(visible_add, remaining)
 
     def _visible_and_hidden(self, nodes):
         start, end = self.view_start, self.view_stop
@@ -83,13 +83,13 @@ class BufferHandler:
         code = '\n'.join(lines)
         return code
 
-    @debug_time('remove pending')
-    def _remove_pending_names(self, names):
+    @debug_time('remove pending add', lambda s, n: ' %d / %d' % (len(n), len(s.add_pending)))
+    def _remove_pending_names_add(self, names):
         for name in names:
             try:
                 self.add_pending.remove(name)
             except ValueError:
-                pass
+                yield name
 
     @debug_time('hl update', lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
     def update_highlights(self, add, clear):

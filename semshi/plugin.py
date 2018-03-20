@@ -97,6 +97,7 @@ class Plugin:
         self.call_atomic_async(calls)
 
     def clear_highlights(self, nodes, buf):
+        logger.debug('clear %d highlights', len(nodes))
         if not nodes:
             return
         # Don't specify line range to clear explicitly because we can't
