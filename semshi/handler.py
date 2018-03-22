@@ -1,4 +1,3 @@
-from queue import Queue
 import threading
 
 from .parser import Parser, UnparsableError
@@ -28,6 +27,10 @@ class BufferHandler:
         self.view_stop = stop + range
 
     def update(self):
+        """Update.
+
+        Start a thread which reparses the code, updates highlights.
+        """
         thread = self._thread
         if thread is not None and thread.is_alive():
             logger.debug('update scheduled')
@@ -64,6 +67,9 @@ class BufferHandler:
 
         self.update_highlights(visible_add, remaining)
 
+        cursor = self.wait_for(lambda: self.plugin.vim.current.window.cursor)
+        self.mark_selected(cursor)
+
     def _visible_and_hidden(self, nodes):
         start, end = self.view_start, self.view_stop
         visible = []
@@ -75,11 +81,20 @@ class BufferHandler:
                 hidden.append(node)
         return visible, hidden
 
+    def wait_for(self, func):
+        event = threading.Event()
+        res = None
+        def inner():
+            nonlocal res
+            res = func()
+            event.set()
+        self.plugin.vim.async_call(inner)
+        event.wait()
+        return res
+
     @debug_time('get current code')
     def _current_code(self):
-        queue = Queue()
-        self.plugin.vim.async_call(lambda: queue.put(self.buf[:]))
-        lines = queue.get()
+        lines = self.wait_for(lambda: self.buf[:])
         code = '\n'.join(lines)
         return code
 
