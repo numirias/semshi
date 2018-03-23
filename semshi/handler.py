@@ -15,16 +15,14 @@ class BufferHandler:
         self.plugin = plugin
         self.buf = buffer
         self.scheduled = False
-        self.view_start = 0
-        self.view_stop = 0
+        self._view = (0, 0)
         self.add_pending = []
         self.parser = Parser(exclude=exclude)
         self._thread = None
 
     def set_viewport(self, start, stop):
-        range = (stop - start)
-        self.view_start = start - range
-        self.view_stop = stop + range
+        range = stop - start
+        self._view = (start - range, stop + range)
 
     def update(self):
         """Update.
@@ -44,7 +42,7 @@ class BufferHandler:
         try:
             while True:
                 try:
-                    self._update()
+                    self._update_step()
                 except UnparsableError:
                     pass
                 if not self.scheduled:
@@ -54,7 +52,7 @@ class BufferHandler:
             import traceback
             logger.error('exception: %s', traceback.format_exc())
 
-    def _update(self):
+    def _update_step(self):
         code = self._current_code()
         names_add, names_clear = self.parser.parse(code)
 
@@ -71,7 +69,7 @@ class BufferHandler:
         self.mark_selected(cursor)
 
     def _visible_and_hidden(self, nodes):
-        start, end = self.view_start, self.view_stop
+        start, end = self._view
         visible = []
         hidden = []
         for node in nodes:
@@ -82,23 +80,25 @@ class BufferHandler:
         return visible, hidden
 
     def wait_for(self, func):
+        """Run func asynchronously, block until done and return result."""
         event = threading.Event()
         res = None
-        def inner():
+        def wrapper():
             nonlocal res
             res = func()
             event.set()
-        self.plugin.vim.async_call(inner)
+        self.plugin.vim.async_call(wrapper)
         event.wait()
         return res
 
     @debug_time('get current code')
     def _current_code(self):
+        """Return current buffer content."""
         lines = self.wait_for(lambda: self.buf[:])
         code = '\n'.join(lines)
         return code
 
-    @debug_time('remove pending add', lambda s, n: ' %d / %d' % (len(n), len(s.add_pending)))
+    @debug_time('rem', lambda s, n: ' %d/%d' % (len(n), len(s.add_pending)))
     def _remove_pending_names_add(self, names):
         for name in names:
             try:
@@ -121,12 +121,10 @@ class BufferHandler:
     @debug_time('mark names')
     def mark_selected(self, cursor):
         # TODO Make async?
-        start = self.view_start
-        stop = self.view_stop
+        start, stop = self._view
         buf = self.buf
         nodes = list(self.parser.same_nodes(cursor))
         nodes = [node for node in nodes if start <= node.lineno <= stop]
         buf.clear_highlight(Node.MARK_ID)
         for node in nodes:
             buf.add_highlight(*node.hl(marked=True))
-

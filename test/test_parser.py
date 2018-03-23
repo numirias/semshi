@@ -2,7 +2,7 @@ import os
 from textwrap import dedent
 import pytest
 from semshi.node import label, UNRESOLVED, FREE, SELF, PARAM, BUILTIN, GLOBAL
-from semshi.parser import Parser
+from semshi.parser import Parser, UnparsableError
 from semshi import parser
 
 from .conftest import parse, make_parser, make_tree, dump_dict, dump_ast, dump_symtable
@@ -437,6 +437,19 @@ def test_base_scope_class_nested():
     assert same_nodes == {z_x, b_x}
 
 
+def test_base_scope_nonlocal_free():
+    parser = make_parser("""
+    def foo():
+        a = 1
+        def bar():
+            nonlocal a
+            a = 1
+    """)
+    foo, foo_a, bar, bar_a = parser.active_names
+    print(bar_a.symbol.is_free(), bar_a.base_table())
+    assert set(parser.same_nodes(foo_a)) == {foo_a, bar_a}
+
+
 def test_attributes():
     parser = make_parser("""
     aa.bb
@@ -609,7 +622,7 @@ class TestDiffs:
     def test_persistent_base_table(self):
         """The id of a saved name should remain the same."""
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_multiple_files():
     """Fuzzing tests against lots of different files."""
     for root, dirs, files in os.walk('/usr/lib/python3.6/'):
@@ -617,15 +630,13 @@ def test_multiple_files():
             if not file.endswith('.py'):
                 continue
             path = os.path.join(root, file)
-            print(path)
+            # print(path)
             with open(path, encoding='utf-8', errors='ignore') as f:
                 code = f.read()
                 try:
                     names = parse(code)
-                except SyntaxError:
-                    continue
-                except RecursionError:
-                    print('recusion error:', path)
+                except UnparsableError as e:
+                    print('unparsable', path, e.error)
                     continue
                 except Exception as e:
                     dump_symtable(code)

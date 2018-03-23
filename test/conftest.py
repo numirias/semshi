@@ -38,7 +38,7 @@ def dump_symtable(table_or_code):
         if isinstance(table, symtable.Class):
             print(table.get_methods())
         for symbol in table.get_symbols():
-            print((indent+4)*' ', symbol, symbol.is_namespace(), symbol.get_namespaces(), symbol.is_free(), symbol.is_local(), symbol.is_global())
+            print((indent+4)*' ', symbol, symbol.is_namespace(), symbol.get_namespaces(), 'free', symbol.is_free(), 'local', symbol.is_local(), 'global', symbol.is_global())
         for child in table.get_children():
             visit_table(child, indent=indent+4)
     visit_table(table)

@@ -23,7 +23,7 @@ def debug_time(label=None, detail=None):
                     text += detail(*args, **kwargs)
                 else:
                     text += detail.format(*args, **kwargs)
-            logger.debug(text)
+            # logger.debug(text)
             return res
         return wrapper
     return inner

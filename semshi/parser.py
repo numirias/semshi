@@ -52,7 +52,7 @@ class Parser:
         new = lines
 
         if len(old) == 0:
-            logger.debug('no old lines -> parse all')
+            # logger.debug('no old lines -> parse all')
             names = new_names, old_names, []
         elif len(old) == len(new):
             if self.single_change(old, new):
@@ -69,7 +69,7 @@ class Parser:
 
         self.active_names = kept_names + added_names
         self.active_lines = lines
-        logger.debug('+ %d names, - %d names', len(added_names), len(removed_names))
+        # logger.debug('+ %d names, - %d names', len(added_names), len(removed_names))
         return (added_names, removed_names)
 
     def make_nodes(self, code, lines):

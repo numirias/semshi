@@ -147,7 +147,7 @@ class Node:
             return self.env[-1]
         if self.symbol.is_global():
             return self.env[0]
-        if self.symbol.is_local():
+        if self.symbol.is_local() and not self.symbol.is_free():
             return self.env[-1]
         for table in reversed(self.env):
             # Classes scopes don't extend to enclosed scopes
@@ -157,6 +157,6 @@ class Node:
                 symbol = table.lookup(self.name)
             except KeyError:
                 continue
-            if symbol.is_local():
+            if symbol.is_local() and not symbol.is_free():
                 return table
         return None
