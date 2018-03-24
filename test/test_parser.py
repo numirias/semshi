@@ -1,7 +1,7 @@
 import os
 from textwrap import dedent
 import pytest
-from semshi.node import label, UNRESOLVED, FREE, SELF, PARAM, BUILTIN, GLOBAL
+from semshi.node import label, UNRESOLVED, FREE, SELF, PARAM, BUILTIN, GLOBAL, LOCAL
 from semshi.parser import Parser, UnparsableError
 from semshi import parser
 
@@ -205,7 +205,7 @@ def test_self_target():
         def x(self):
             self.abc
     """)
-    names = parser.active_names
+    names = parser._nodes
     print(names)
     assert names[0].target is None
     last_self = names[-1]
@@ -376,7 +376,7 @@ def test_same_nodes():
         def B():
             x
     """)
-    names = parser.active_names
+    names = parser._nodes
     x, A, A_x, B, B_x = names
     same_nodes = set(parser.same_nodes(x))
     assert same_nodes == {x, A_x, B_x}
@@ -391,7 +391,7 @@ def test_base_scope_global():
             global x
             x
     """)
-    names = parser.active_names
+    names = parser._nodes
     x, a, a_x, b, b_x = names
     same_nodes = set(parser.same_nodes(x))
     assert same_nodes == {x, b_x}
@@ -404,7 +404,7 @@ def test_base_scope_free():
         def b():
             x
     """)
-    names = parser.active_names
+    names = parser._nodes
     a, a_x, b, b_x = names
     same_nodes = set(parser.same_nodes(a_x))
     assert same_nodes == {a_x, b_x}
@@ -416,7 +416,7 @@ def test_base_scope_class():
         x = 1
         x
     """)
-    names = parser.active_names
+    names = parser._nodes
     A, x1, x2 = names
     same_nodes = set(parser.same_nodes(x1))
     assert same_nodes == {x1, x2}
@@ -431,7 +431,7 @@ def test_base_scope_class_nested():
             def b():
                 return x
     """)
-    names = parser.active_names
+    names = parser._nodes
     z, z_x, A, A_x, b, b_x = names
     same_nodes = set(parser.same_nodes(z_x))
     assert same_nodes == {z_x, b_x}
@@ -445,7 +445,7 @@ def test_base_scope_nonlocal_free():
             nonlocal a
             a = 1
     """)
-    foo, foo_a, bar, bar_a = parser.active_names
+    foo, foo_a, bar, bar_a = parser._nodes
     print(bar_a.symbol.is_free(), bar_a.base_table())
     assert set(parser.same_nodes(foo_a)) == {foo_a, bar_a}
 
@@ -470,7 +470,7 @@ def test_attributes():
         def f(foo):
             self.gg
     """)
-    names = parser.active_names
+    names = parser._nodes
     names = [n for n in names if n.is_attr]
     b_gg, c_gg, d_gg, e_hh = names
     same_nodes = set(parser.same_nodes(c_gg))
@@ -586,6 +586,47 @@ def test_efficient_diff():
     raise
 
 
+def test_exclude_types():
+    parser = Parser(exclude=[LOCAL])
+    add, clear = parser.parse(dedent('''
+    a = 1
+    def f():
+        b, c = 1
+        a + b
+    '''))
+    assert [n.name for n in add] == ['a']
+    assert clear == []
+    add, clear = parser.parse(dedent('''
+    a = 1
+    def f():
+        b, c = 1
+        a + c
+    '''))
+    assert add == []
+    assert clear == []
+    add, clear = parser.parse(dedent('''
+    a = 1
+    def f():
+        b, c = 1
+        g + c
+    '''))
+    assert [n.name for n in add] == ['g']
+    assert [n.name for n in clear] == ['a']
+    add, clear = parser.parse(dedent('''
+    a = 1
+    def f():
+        b, c = 1
+        0 + c
+    '''))
+    assert add == []
+    assert [n.name for n in clear] == ['g']
+
+
+def test_exclude_types_same_nodes():
+    # TODO
+    pass
+
+
 class TestDiffs:
 
     @pytest.mark.xfail
@@ -599,11 +640,13 @@ class TestDiffs:
         assert insertions(list(''), list('X')) == (0, 1)
         assert insertions(list('a'), list('aXX')) == (1, 2)
 
-    def test_single_change(self):
-        def single_change(c1, c2):
-            return Parser.single_change(c1, c2)
-        assert single_change(list('abc'), list('axc'))
-        assert not single_change(list('abc'), list('xbx'))
+    def test_minor_change(self):
+        def minor_change(c1, c2):
+            return Parser._minor_change(c1, c2)
+        assert minor_change(list('abc'), list('axc'))
+        assert not minor_change(list('abc'), list('xbx'))
+        assert not minor_change(list('abc'), list('abcedf'))
+        assert minor_change(list('abc'), list('abc'))
 
     def test_diff(self):
         """The id of a saved name should remain the same so that we can remove
@@ -614,15 +657,13 @@ class TestDiffs:
         print(add0, rem)
         add, rem = parser.parse('foo ')
         print(add, rem)
-        print('active', parser.active_names)
+        print('active', parser._nodes)
         add, rem = parser.parse('foo = 1')
         print(add, rem)
         assert add0[0].id == rem[0].id
 
-    def test_persistent_base_table(self):
-        """The id of a saved name should remain the same."""
 
-# @pytest.mark.skip
+@pytest.mark.skip
 def test_multiple_files():
     """Fuzzing tests against lots of different files."""
     for root, dirs, files in os.walk('/usr/lib/python3.6/'):
@@ -630,7 +671,7 @@ def test_multiple_files():
             if not file.endswith('.py'):
                 continue
             path = os.path.join(root, file)
-            # print(path)
+            print(path)
             with open(path, encoding='utf-8', errors='ignore') as f:
                 code = f.read()
                 try:
@@ -641,5 +682,3 @@ def test_multiple_files():
                 except Exception as e:
                     dump_symtable(code)
                     raise
-                # for name in names:
-                #     print(name)

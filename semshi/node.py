@@ -25,10 +25,10 @@ class Node:
     MARK_ID = 31400
     next_id = 314001
 
-    __slots__ = ['id','env', 'lineno', 'col', 'name', 'end', 'is_attr', 'symname', 'symbol', 'hl_group', '_tup', 'target']
+    __slots__ = ['id','env', 'lineno', 'col', 'name', 'end', 'is_attr',
+                 'symname', 'symbol', 'hl_group', '_tup', 'target']
 
     def __init__(self, id, lineno, col, env, is_attr=False, target=None):
-        # TODO we need to use unique ids otherwise we cant delete after setting
         self.id = Node.next_id
         Node.next_id += 1
         self.env = env
@@ -45,8 +45,6 @@ class Node:
             table = self.env[-1]
             try:
                 self.symbol = table.lookup(self.symname)
-                # print('looking up', self.symname, 'in', env)
-                # self.symbol = env._symbols.get(self.symname)
             except KeyError:
                 raise Exception('%s can\'t lookup "%s".' % (self, self.symname))
         self.hl_group = self.make_hl_group()
@@ -55,13 +53,6 @@ class Node:
 
     def make_tup(self):
         self._tup = (self.lineno, self.col, self.hl_group, self.name)
-
-    def matches(self, other):
-        return (self.lineno == other.lineno and
-                self.col == other.col and
-                self.hl_group == other.hl_group and
-                self.name == other.name
-                )
 
     def __lt__(self, other):
         return self._tup < other._tup 

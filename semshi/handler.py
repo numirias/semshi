@@ -5,10 +5,6 @@ from .util import logger, debug_time
 from .node import Node
 
 
-# class AlreadyRunning(Exception):
-#     pass
-
-
 class BufferHandler:
 
     def __init__(self, plugin, buffer, exclude=None):
@@ -17,10 +13,10 @@ class BufferHandler:
         self.scheduled = False
         self._view = (0, 0)
         self.add_pending = []
-        self.parser = Parser(exclude=exclude)
+        self._parser = Parser(exclude=exclude)
         self._thread = None
 
-    def set_viewport(self, start, stop):
+    def set_viewport(self, start, stop): # TODO make assignment
         range = stop - start
         self._view = (start - range, stop + range)
 
@@ -51,15 +47,16 @@ class BufferHandler:
         except:
             import traceback
             logger.error('exception: %s', traceback.format_exc())
+            raise
 
     def _update_step(self):
         code = self._current_code()
-        names_add, names_clear = self.parser.parse(code)
+        add, clear = self._parser.parse(code)
 
-        # Remove nodes from add_pending which should be cleared
-        remaining = list(self._remove_pending_names_add(names_clear))
+        # Remove nodes from add_pending which should be cleared anyway
+        remaining = list(self._remove_from_pending(clear))
         logger.debug('remaining %d', len((remaining)))
-        visible_add, hidden_add = self._visible_and_hidden(names_add)
+        visible_add, hidden_add = self._visible_and_hidden(add)
         # Add new adds which aren't visible to pending
         self.add_pending += hidden_add
 
@@ -91,20 +88,20 @@ class BufferHandler:
         event.wait()
         return res
 
-    @debug_time('get current code')
+    @debug_time
     def _current_code(self):
         """Return current buffer content."""
         lines = self.wait_for(lambda: self.buf[:])
         code = '\n'.join(lines)
         return code
 
-    @debug_time('rem', lambda s, n: ' %d/%d' % (len(n), len(s.add_pending)))
-    def _remove_pending_names_add(self, names):
-        for name in names:
+    @debug_time(None, lambda s, n: ' %d/%d' % (len(n), len(s.add_pending)))
+    def _remove_from_pending(self, nodes):
+        for node in nodes:
             try:
-                self.add_pending.remove(name)
+                self.add_pending.remove(node)
             except ValueError:
-                yield name
+                yield node
 
     @debug_time('hl update', lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
     def update_highlights(self, add, clear):
@@ -123,7 +120,7 @@ class BufferHandler:
         # TODO Make async?
         start, stop = self._view
         buf = self.buf
-        nodes = list(self.parser.same_nodes(cursor))
+        nodes = list(self._parser.same_nodes(cursor))
         nodes = [node for node in nodes if start <= node.lineno <= stop]
         buf.clear_highlight(Node.MARK_ID)
         for node in nodes:
