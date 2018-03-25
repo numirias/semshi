@@ -1,7 +1,9 @@
 import ast
+from collections import Iterable
+from functools import singledispatch
 import symtable
-from .node import Node
 
+from .node import Node
 from .util import logger, debug_time
 from .visitor import Visitor
 
@@ -19,6 +21,8 @@ class Parser:
         self._excluded = exclude
         self._lines = []
         self._nodes = []
+        self.same_nodes = singledispatch(self.same_nodes)
+        self.same_nodes.register(Iterable, self._same_nodes_cursor)
 
     @debug_time
     def parse(self, code):
@@ -36,7 +40,7 @@ class Parser:
         return [n for n in nodes if n.hl_group not in self._excluded]
 
     def _parse(self, code):
-        """Parse code and return added and removed nodes."""
+        """Parse code and return added and removed nodes since last run."""
         new_lines = code.split('\n')
         new_nodes = self._filter_excluded(self._make_nodes(code, new_lines))
         if self._minor_change(self._lines, new_lines):
@@ -46,10 +50,16 @@ class Parser:
             add, rem = new_nodes, self._nodes
             self._nodes = add
         self._lines = new_lines
-        logger.debug('nodes: + %d,  - %d', len(add), len(rem))
+        logger.debug('nodes: +%d,  -%d', len(add), len(rem))
         return (add, rem)
 
-    def _make_nodes(self, code, lines):
+    def _make_nodes(self, code, lines=None):
+        """Return nodes in code.
+
+        Runs AST visitor on code and produces nodes.
+        """
+        if lines is None:
+            lines = code.split('\n')
         ast_root = self._make_ast(code)
         st_root = self._make_symtable(code)
         visitor = Visitor(lines, st_root, ast_root)
@@ -58,10 +68,12 @@ class Parser:
 
     @debug_time
     def _make_ast(self, code):
+        """Return AST for code."""
         return ast.parse(code)
 
     @debug_time
     def _make_symtable(self, code):
+        """Return symtable for code."""
         return symtable.symtable(code, '?', 'exec')
 
     @staticmethod
@@ -132,33 +144,36 @@ class Parser:
         """Return node at cursor position."""
         lineno, col = cursor
         for node in self._nodes:
-            if node.lineno == lineno and \
-               node.col <= col < node.col + len(node.name):
+            if node.lineno == lineno and node.col <= col < node.end:
                 return node
         return None
 
-    def same_nodes(self, node_or_cursor):
-        if isinstance(node_or_cursor, Node):
-            current_node = node_or_cursor
-        else:
-            current_node = self.node_at(node_or_cursor)
-            if current_node is None:
-                return []
+    def same_nodes(self, cur_node):
+        """Return nodes with the same scope as cur_node.
 
+        The same scope is to be understood as all nodes with the same base
+        symtable. In some cases this can be ambiguous.
+        """
         # TODO Make this an option
-        target = current_node.target
+        target = cur_node.target
         if target is not None:
-            current_node = target
-
-        current_name = current_node.name
-        base_table = current_node.base_table()
-        ref = getattr(current_node, 'ref', None)
+            cur_node = target
+        cur_name = cur_node.name
+        base_table = cur_node.base_table()
+        ref = getattr(cur_node, 'ref', None)
         for node in self._nodes:
-            if ref:
+            if ref is not None:
                 if ref == getattr(node, 'ref', None):
                     yield node
                 continue
-            if node.name != current_name:
+            if node.name != cur_name:
                 continue
             if node.base_table() == base_table:
                 yield node
+
+    def _same_nodes_cursor(self, cursor):
+        """Return nodes with the same scope as node at the cursor position."""
+        cur_node = self.node_at(cursor)
+        if cur_node is None:
+            return []
+        return self.same_nodes(cur_node)

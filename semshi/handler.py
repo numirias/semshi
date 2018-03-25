@@ -51,10 +51,10 @@ class BufferHandler:
 
     def _update_step(self):
         code = self._current_code()
-        add, clear = self._parser.parse(code)
+        add, rem = self._parser.parse(code)
 
         # Remove nodes from add_pending which should be cleared anyway
-        remaining = list(self._remove_from_pending(clear))
+        remaining = list(self._remove_from_pending(rem))
         logger.debug('remaining %d', len((remaining)))
         visible_add, hidden_add = self._visible_and_hidden(add)
         # Add new adds which aren't visible to pending
