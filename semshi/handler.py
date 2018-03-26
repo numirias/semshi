@@ -103,25 +103,23 @@ class BufferHandler:
             except ValueError:
                 yield node
 
-    @debug_time('hl update', lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
+    @debug_time(None, lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
     def update_highlights(self, add, clear):
         # logger.debug('add %d, clear %d', len(add), len(clear))
-        self.plugin.add_highlights(add, self.buf)
+        self.plugin.add_highlights([a.hl() for a in add], self.buf)
         self.plugin.clear_highlights(clear, self.buf)
 
     def add_visible_highlights(self):
         """Add highlights in the current viewport which have not been applied
         yet."""
-        add_now, self.add_pending = self._visible_and_hidden(self.add_pending)
-        self.plugin.add_highlights(add_now, self.buf)
+        add, self.add_pending = self._visible_and_hidden(self.add_pending)
+        self.plugin.add_highlights([a.hl() for a in add], self.buf)
 
-    @debug_time('mark names')
+    @debug_time
     def mark_selected(self, cursor):
         # TODO Make async?
+        nodes = self._parser.same_nodes(cursor)
         start, stop = self._view
-        buf = self.buf
-        nodes = list(self._parser.same_nodes(cursor))
-        nodes = [node for node in nodes if start <= node.lineno <= stop]
-        buf.clear_highlight(Node.MARK_ID)
-        for node in nodes:
-            buf.add_highlight(*node.hl(marked=True))
+        nodes = [n for n in nodes if start <= n.lineno <= stop]
+        self.buf.clear_highlight(Node.MARK_ID)
+        self.plugin.add_highlights([n.hl(True) for n in nodes], self.buf)

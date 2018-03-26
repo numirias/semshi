@@ -1,7 +1,7 @@
 import os
 from textwrap import dedent
 import pytest
-from semshi.node import label, UNRESOLVED, FREE, SELF, PARAM, BUILTIN, GLOBAL, LOCAL
+from semshi.node import Node, label, UNRESOLVED, FREE, SELF, PARAM, BUILTIN, GLOBAL, LOCAL, IMPORTED
 from semshi.parser import Parser, UnparsableError
 from semshi import parser
 
@@ -222,6 +222,14 @@ def test_unresolved_name():
     """)
     assert names[1].hl_group == UNRESOLVED
 
+def test_imported_names():
+    names = parse("""
+    import foo
+    import abs
+    foo, abs
+    """)
+    assert [n.hl_group for n in names] == [IMPORTED] * 4
+
 
 def test_nested_comprehension():
     names = parse("""
@@ -305,9 +313,11 @@ def test_global_builtin():
     """A builtin name assigned globally should be highlighted as a global, not
     a builtin."""
     names = parse("""
+    len
     set = 1
     def foo(): set, str
     """)
+    assert names[0].hl_group == BUILTIN
     assert names[-2].hl_group == GLOBAL
     assert names[-1].hl_group == BUILTIN
 
@@ -623,8 +633,35 @@ def test_exclude_types():
 
 
 def test_exclude_types_same_nodes():
-    # TODO
+    # TODO same_node should work on excluded types
     pass
+
+
+class TestNode:
+
+    def test_node(self):
+        class Symbol:
+            def __init__(self, name, **kwargs):
+                self.name = name
+                for k, v in kwargs.items():
+                    setattr(self, 'is_' + k, lambda: v)
+            def __getattr__(self, item):
+                if item.startswith('is_'):
+                    return lambda: False
+                raise AttributeError(item)
+
+        class Table:
+            def __init__(self, symbols, type=None):
+                self.symbols = symbols
+                self.type = type or 'module'
+            def lookup(self, name):
+                return next(sym for sym in self.symbols if sym.name == name)
+            def get_type(self):
+                return self.type
+
+        a = Node('foo', 0, 0, [Table([Symbol('foo', local=True)])])
+        b = Node('bar', 0, 10, [Table([Symbol('bar', local=True)])])
+        assert a.id + 1 == b.id
 
 
 class TestDiffs:

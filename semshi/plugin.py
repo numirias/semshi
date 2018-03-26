@@ -93,7 +93,7 @@ class Plugin:
         logger.debug('adding %d highlights', len(nodes))
         if not nodes:
             return
-        calls = [('nvim_buf_add_highlight', (buf, *n.hl())) for n in nodes]
+        calls = [('nvim_buf_add_highlight', (buf, *n)) for n in nodes]
         self.call_atomic_async(calls)
 
     def clear_highlights(self, nodes, buf):
