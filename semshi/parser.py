@@ -5,7 +5,7 @@ import symtable
 
 from .node import Node
 from .util import logger, debug_time
-from .visitor import Visitor
+from .visitor import visitor
 
 
 class UnparsableError(Exception):
@@ -61,10 +61,8 @@ class Parser:
         if lines is None:
             lines = code.split('\n')
         ast_root = self._make_ast(code)
-        st_root = self._make_symtable(code)
-        visitor = Visitor(lines, st_root, ast_root)
-        visitor()
-        return visitor.names
+        symtable_root = self._make_symtable(code)
+        return visitor(lines, symtable_root, ast_root)
 
     @debug_time
     def _make_ast(self, code):

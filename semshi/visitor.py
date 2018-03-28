@@ -1,18 +1,28 @@
-from ast import ClassDef, AsyncFunctionDef, FunctionDef, Lambda, Module, ListComp, DictComp, SetComp, comprehension, Attribute, Name, GeneratorExp, AST, arg, Global, arguments, Import, ImportFrom, Try, NameConstant, Str, Num, Store, Load, Eq, Lt, Gt, NotEq, LtE, GtE
+from ast import (AST, AsyncFunctionDef, Attribute, ClassDef, DictComp, Eq,
+                 FunctionDef, GeneratorExp, Global, Gt, GtE, Import,
+                 ImportFrom, Lambda, ListComp, Load, Lt, LtE, Module, Name,
+                 NameConstant, NotEq, Num, SetComp, Store, Str, Try, arg,
+                 arguments, comprehension)
 import io
-import tokenize
-from token import tok_name, NAME, OP
-from itertools import count, chain
+from itertools import chain, count
+from token import NAME, OP, tok_name
+from tokenize import tokenize
 
 from .node import Node
-from .util import logger, debug_time
+from .util import debug_time, logger
+
 
 # Node types which introduce a new scope
 BLOCKS = (Module, FunctionDef, AsyncFunctionDef, ClassDef, ListComp, DictComp,
           SetComp, GeneratorExp, Lambda)
 
 
+def tokenize_lines(lines):
+    return tokenize((bytes(line + '\n', 'utf-8') for line in lines).__next__)
+
+
 def advance(tokens, s=None, type=NAME):
+    """Advance token stream."""
     if s is None:
         return next(t for t in tokens if t.type == type)
     if isinstance(s, str):
@@ -21,20 +31,28 @@ def advance(tokens, s=None, type=NAME):
         return next(t for t in tokens if t.type == type and t.string in s)
 
 
+@debug_time
+def visitor(lines, symtable_root, ast_root):
+    visitor = Visitor(lines, symtable_root)
+    return visitor(ast_root)
+
+
 class Visitor:
+    """The visitor visits the AST recursively to extract relevant name nodes in
+    their context.
+    """
 
-    def __init__(self, lines, root_table, root_node):
-        self.table_stack = [root_table]
-        self.root_node = root_node
-        self.env = []
-        self.names = []
-        self.outside = False
-        self.lines = lines
+    def __init__(self, lines, root_table):
+        self._lines = lines
+        self._table_stack = [root_table]
+        self._env = []
+        # Holds a copy of the current environment to avoid multiple copies
         self._cur_env = None
+        self.names = []
 
-    @debug_time('visitor')
-    def __call__(self):
-        self._visit(self.root_node)
+    def __call__(self, root_node):
+        self._visit(root_node)
+        return self.names
 
     def _visit(self, node):
         """Recursively visit the node to build a list of names in their scopes.
@@ -44,7 +62,7 @@ class Visitor:
         creating a new scope and deleted afterwards so they are not revisited
         later.
         """
-        # type() is fine here and a lot faster than the idiomatic isinstance()
+        # Use type() because it's faster than the more idiomatic isinstance()
         type_ = type(node)
         if type_ is Name:
             self._new_name(node)
@@ -55,7 +73,6 @@ class Visitor:
             return
         elif type_ in (NameConstant, Str, Num, Store, Load, Eq, Lt, Gt, NotEq,
                        LtE, GtE):
-            # These types don't require any action
             return
         elif type_ is Try:
             self._visit_try(node)
@@ -72,7 +89,7 @@ class Visitor:
         if type_ in (AsyncFunctionDef, FunctionDef):
             self._visit_args(node)
         if type_ in (AsyncFunctionDef, ClassDef, FunctionDef):
-            self.visit_class_function_block(node)
+            self._visit_class_function_definition(node)
         # Either make a new block scope...
         if type_ in BLOCKS:
             self._visit_block(node)
@@ -92,19 +109,21 @@ class Visitor:
                                self._cur_env))
 
     def _visit_arg_defaults(self, node):
+        """Visit argument default values."""
         for arg_ in node.args.defaults + node.args.kw_defaults:
             self._visit(arg_)
         del node.args.defaults
         del node.args.kw_defaults
 
     def _visit_block(self, node):
-        current_table = self.table_stack.pop()
-        self.table_stack += reversed(current_table.get_children())
-        self.env.append(current_table)
-        self._cur_env = self.env[:]
+        """Visit block and create new scope."""
+        current_table = self._table_stack.pop()
+        self._table_stack += reversed(current_table.get_children())
+        self._env.append(current_table)
+        self._cur_env = self._env[:]
         self._iter_node(node)
-        self.env.pop()
-        self._cur_env = self.env[:]
+        self._env.pop()
+        self._cur_env = self._env[:]
 
     def _visit_try(self, node):
         """Visit try-except."""
@@ -151,10 +170,14 @@ class Visitor:
         using the tokenize module is slow, we only use it where absoultely
         necessary.
         """
-        first_line = bytes(node.col_offset * ' ' + self.lines[node.lineno-1][node.col_offset:], 'utf-8')
-        other_lines = (bytes(self.lines[i] + '\n', 'utf-8') for i in count(node.lineno))
-        lines = chain([first_line], other_lines)
-        tokens = tokenize.tokenize(lines.__next__)
+        line_idx = node.lineno - 1
+        lines = chain(
+            # Let first line start at the col_offset of the import statement
+            # in case multiple imports are chained in one line with semicolons.
+            [node.col_offset * ' ' + self._lines[line_idx][node.col_offset:]],
+            (self._lines[i] + '\n' for i in count(node.lineno)),
+        )
+        tokens = tokenize_lines(lines)
         # Advance to "import" keyword
         advance(tokens, 'import')
         for alias, remaining in zip(node.names, count(len(node.names)-1, -1)):
@@ -167,7 +190,7 @@ class Visitor:
             token = advance(tokens)
             self.names.append(Node(
                 token.string,
-                token.start[0] + node.lineno - 1,
+                token.start[0] + line_idx,
                 token.start[1],
                 self._cur_env,
             ))
@@ -176,7 +199,7 @@ class Visitor:
                 # ...they must be comma-separated, so advance to next comma.
                 advance(tokens, ',', OP)
 
-    def visit_class_function_block(self, node):
+    def _visit_class_function_definition(self, node):
         """Visit class or function definition.
 
         The AST does not include the line and column of the names in class and
@@ -187,17 +210,16 @@ class Visitor:
             self._visit(decorator)
         del node.decorator_list
         line_idx = node.lineno - 1
-        line = self.lines[line_idx]
         # Guess offset of the name (length of the keyword + 1)
         start = node.col_offset + (6 if type(node) is ClassDef else 4)
+        stop = start + len(node.name)
         # If the node has no decorators and its name appears directly after the
         # definition keyword, we found its position and don't need to tokenize.
-        if not decorators and line[start:start+len(node.name)] == node.name:
+        if not decorators and self._lines[line_idx][start:stop] == node.name:
             lineno = node.lineno
             column = start
         else:
-            tokens = tokenize.tokenize((bytes(self.lines[i] + '\n', 'utf-8')
-                                        for i in count(line_idx)).__next__)
+            tokens = tokenize_lines(self._lines[i] + '\n' for i in count(line_idx))
             advance(tokens, ('class', 'def'))
             token = advance(tokens)
             lineno = token.start[0] + line_idx
@@ -205,10 +227,11 @@ class Visitor:
         self.names.append(Node(node.name, lineno, column, self._cur_env))
 
     def _mark_self(self, node):
-        """Mark self argument if present.
+        """Mark self/cls argument if the current function has one.
 
-        Determine if an argument is a self argument and add a reference in the
-        function's symtable.
+        Determine if an argument is a self argument (the first argument of a
+        method called "self" or "cls") and add a reference in the function's
+        symtable.
         """
         # The first argument...
         try:
@@ -219,36 +242,42 @@ class Visitor:
         if arg.arg not in ['self', 'cls']:
             return
         # ...and a class as parent scope is a self_param.
-        if not self.env[-1].get_type() == 'class':
+        if not self._env[-1].get_type() == 'class':
             return
         # Let the table for the current function scope remember the param
-        self.table_stack[-1].self_param = arg.arg
+        self._table_stack[-1].self_param = arg.arg
 
     def _add_attribute(self, node):
-        """Add node as an attribute."""
+        """Add node as an attribute.
+
+        The only interesting attributes are attributes to self or cls in a
+        method (e.g. "self._name").
+        """
         # TODO this doesn't check if we're inside a class
-        # TODO Maybe speed up by check if node.value.id in [self, cls]
         # Only attributes of names matter. (foo.attr, but not [].attr)
         if type(node.value) is not Name:
             return
         if node.value.id not in ('self', 'cls'):
             return
-        if node.value.id != getattr(self.env[-1], 'self_param', None):
+        if node.value.id != getattr(self._env[-1], 'self_param', None):
             return
-        id = node.attr
-        col_offset = node.value.col_offset + len(node.value.id) + 1
-        lineno = node.value.lineno
-        new_node = Node(node.attr, lineno, col_offset, self.env[:-1], is_attr=True)
+        new_node = Node(
+            node.attr,
+            node.value.lineno,
+            node.value.col_offset + len(node.value.id) + 1,
+            self._env[:-1],
+            True,
+        )
         node.value.self_target = new_node # TODO
         self.names.append(new_node)
 
     def _iter_node(self, node):
+        """Iterate through fields of the node."""
         if node is None:
             return
         for field in node._fields:
-            try:
-                value = node.__dict__.get(field)
-            except AttributeError:
+            value = node.__dict__.get(field, None)
+            if value is None:
                 continue
             value_type = type(value)
             if value_type is list:
@@ -256,6 +285,7 @@ class Visitor:
                     if type(item) == str:
                         continue
                     self._visit(item)
-            # elif isinstance(value, AST):
+            # We would want to use isinstance(value, AST) here. Not sure how
+            # much more expensive that is, though.
             elif value_type not in (str, int, bytes):
                 self._visit(value)

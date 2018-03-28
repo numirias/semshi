@@ -18,7 +18,10 @@ def debug_time(label_or_callable=None, detail=None):
             res = func(*args, **kwargs)
             label = label_or_callable
             if not isinstance(label, str):
-                label = func.__name__
+                try:
+                    label = func.__name__
+                except AttributeError:
+                    label = func.__class__.__name__
             text = 'TIME %s: %f ' % (label, time.time() - t)
             if detail is not None:
                 if callable(detail):
