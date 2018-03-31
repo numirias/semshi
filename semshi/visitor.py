@@ -18,7 +18,7 @@ BLOCKS = (Module, FunctionDef, AsyncFunctionDef, ClassDef, ListComp, DictComp,
 
 
 def tokenize_lines(lines):
-    return tokenize((bytes(line + '\n', 'utf-8') for line in lines).__next__)
+    return tokenize(((line + '\n').encode('utf-8') for line in lines).__next__)
 
 
 def advance(tokens, s=None, type=NAME):
@@ -167,31 +167,36 @@ class Visitor:
         Unlike other nodes in the AST, names in import statements don't come
         with a specified line number and column. Therefore, we need to use the
         tokenizer on that part of the code to get the exact position. Since
-        using the tokenize module is slow, we only use it where absoultely
+        using the tokenize module is slow, we only use it where absolutely
         necessary.
         """
+        # TODO Don't compare position if just one import in that line (speed up)
         line_idx = node.lineno - 1
-        lines = chain(
-            # Let first line start at the col_offset of the import statement
-            # in case multiple imports are chained in one line with semicolons.
-            [node.col_offset * ' ' + self._lines[line_idx][node.col_offset:]],
-            (self._lines[i] + '\n' for i in count(node.lineno)),
-        )
-        tokens = tokenize_lines(lines)
-        # Advance to "import" keyword
-        advance(tokens, 'import')
+        tokens = tokenize_lines(self._lines[i] for i in count(line_idx))
+        while True:
+            # Advance to next "import" keyword
+            token = advance(tokens, 'import')
+            cur_line = self._lines[line_idx + token.start[0] - 1]
+            # Determine exact byte offset. token.start[1] just holds the char
+            # index which may give a wrong position.
+            offset = len(cur_line[:token.start[1]].encode('utf-8'))
+            # ...until we found the matching one.
+            if offset >= node.col_offset:
+                break
         for alias, remaining in zip(node.names, count(len(node.names)-1, -1)):
             if alias.name == '*':
-                continue # TODO Handle star import
+                continue # TODO Handle wildcard imports
             # If it's an "as" alias import...
             if alias.asname is not None:
                 # ...advance to "as" keyword.
                 advance(tokens, 'as')
             token = advance(tokens)
+            cur_line = self._lines[line_idx + token.start[0] - 1]
             self.names.append(Node(
                 token.string,
                 token.start[0] + line_idx,
-                token.start[1],
+                # Exact byte offset of the token
+                len(cur_line[:token.start[1]].encode('utf-8')),
                 self._cur_env,
             ))
             # If there are more imports in that import statement...
@@ -202,8 +207,8 @@ class Visitor:
     def _visit_class_function_definition(self, node):
         """Visit class or function definition.
 
-        The AST does not include the line and column of the names in class and
-        function definitions, so we need to determine it using tokenize.
+        We need to use the tokenizer here for the same reason as in
+        _visit_import (no line/col for names in class/function definitions).
         """
         decorators = node.decorator_list
         for decorator in decorators:
@@ -219,7 +224,7 @@ class Visitor:
             lineno = node.lineno
             column = start
         else:
-            tokens = tokenize_lines(self._lines[i] + '\n' for i in count(line_idx))
+            tokens = tokenize_lines(self._lines[i] for i in count(line_idx))
             advance(tokens, ('class', 'def'))
             token = advance(tokens)
             lineno = token.start[0] + line_idx
@@ -250,7 +255,7 @@ class Visitor:
     def _add_attribute(self, node):
         """Add node as an attribute.
 
-        The only interesting attributes are attributes to self or cls in a
+        The only relevant attributes are attributes to self or cls in a
         method (e.g. "self._name").
         """
         # TODO this doesn't check if we're inside a class

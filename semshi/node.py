@@ -36,7 +36,7 @@ class Node:
         self.name = name
         self.lineno = lineno
         self.col = col
-        self.end = self.col + len(bytes(self.name, 'utf-8'))
+        self.end = self.col + len(bytes(self.name, 'utf-8')) # TODO a bit slow
         self.env = env
         self.is_attr = is_attr
         self.symname = self._make_symname(name)

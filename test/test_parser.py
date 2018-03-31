@@ -139,6 +139,30 @@ def test_import_scopes_and_positions():
     ]
 
 
+def test_multibyte_import_positions():
+    names = parse('''
+    import aaa, bbb
+    import äää, ööö
+    aaa; import bbb, ccc
+    äää; import ööö, üüü
+    import äää; import ööö, üüü; from äää import ööö; import üüü as äää
+    from x import (
+        äää, ööö
+    )
+    from foo \
+            import äää
+    ''')
+    positions = [(n.col, n.end) for n in names]
+    assert positions == [
+        (7, 10), (12, 15),
+        (7, 13), (15, 21),
+        (0, 3), (12, 15), (17, 20),
+        (0, 6), (15, 21), (23, 29),
+        (7, 13), (22, 28), (30, 36), (57, 63), (82, 88),
+        (4, 10), (12, 18),
+        (28, 34),
+    ]
+
 def test_name_mangling():
     """Leading double underscores can lead to a different symbol name."""
     names = parse("""
