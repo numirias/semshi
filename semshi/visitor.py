@@ -4,7 +4,7 @@ from ast import (AST, AsyncFunctionDef, Attribute, ClassDef, DictComp, Eq,
                  NameConstant, NotEq, Num, SetComp, Store, Str, Try, arg,
                  arguments, comprehension)
 import io
-from itertools import chain, count
+from itertools import count
 from token import NAME, OP, tok_name
 from tokenize import tokenize
 
@@ -34,7 +34,8 @@ def advance(tokens, s=None, type=NAME):
 @debug_time
 def visitor(lines, symtable_root, ast_root):
     visitor = Visitor(lines, symtable_root)
-    return visitor(ast_root)
+    visitor.visit(ast_root)
+    return visitor.nodes
 
 
 class Visitor:
@@ -46,19 +47,15 @@ class Visitor:
         self._lines = lines
         self._table_stack = [root_table]
         self._env = []
-        # Holds a copy of the current environment to avoid multiple copies
+        # Holds a copy of the current environment to avoid repeated copying
         self._cur_env = None
-        self.names = []
+        self.nodes = []
 
-    def __call__(self, root_node):
-        self._visit(root_node)
-        return self.names
-
-    def _visit(self, node):
+    def visit(self, node):
         """Recursively visit the node to build a list of names in their scopes.
 
         In some contexts, nodes appear in a different order than the scopes are
-        nested. In that case attributes of a node might be visitied before
+        nested. In that case, attributes of a node might be visitied before
         creating a new scope and deleted afterwards so they are not revisited
         later.
         """
@@ -69,7 +66,7 @@ class Visitor:
             return
         elif type_ is Attribute:
             self._add_attribute(node)
-            self._visit(node.value)
+            self.visit(node.value)
             return
         elif type_ in (NameConstant, Str, Num, Store, Load, Eq, Lt, Gt, NotEq,
                        LtE, GtE):
@@ -100,18 +97,18 @@ class Visitor:
     def _new_name(self, node):
         # Using __dict__.get() is faster than getattr()
         target = node.__dict__.get('self_target')
-        self.names.append(Node(node.id, node.lineno, node.col_offset,
+        self.nodes.append(Node(node.id, node.lineno, node.col_offset,
                                self._cur_env, None, target))
 
     def _visit_arg(self, node):
         """Visit argument."""
-        self.names.append(Node(node.arg, node.lineno, node.col_offset,
+        self.nodes.append(Node(node.arg, node.lineno, node.col_offset,
                                self._cur_env))
 
     def _visit_arg_defaults(self, node):
         """Visit argument default values."""
         for arg_ in node.args.defaults + node.args.kw_defaults:
-            self._visit(arg_)
+            self.visit(arg_)
         del node.args.defaults
         del node.args.kw_defaults
 
@@ -128,25 +125,25 @@ class Visitor:
     def _visit_try(self, node):
         """Visit try-except."""
         for child in node.body:
-            self._visit(child)
+            self.visit(child)
         del node.body
         for child in node.orelse:
-            self._visit(child)
+            self.visit(child)
         del node.orelse
 
     def _visit_comp(self, node):
         """Visit set/dict/list comprehension or generator expression."""
         generator = node.generators[0]
-        self._visit(generator.iter)
+        self.visit(generator.iter)
         del generator.iter
 
     def _visit_class_meta(self, node):
         """Visit class bases and keywords."""
         for base in node.bases:
-            self._visit(base)
+            self.visit(base)
         del node.bases
         for keyword in node.keywords:
-            self._visit(keyword)
+            self.visit(keyword)
         del node.keywords
 
     def _visit_args(self, node):
@@ -155,9 +152,9 @@ class Visitor:
         for arg in args.args + args.kwonlyargs + [args.vararg, args.kwarg]:
             if arg is None:
                 continue
-            self._visit(arg.annotation)
+            self.visit(arg.annotation)
             del arg.annotation
-        self._visit(node.returns)
+        self.visit(node.returns)
         del node.returns
         self._mark_self(node)
 
@@ -192,7 +189,7 @@ class Visitor:
                 advance(tokens, 'as')
             token = advance(tokens)
             cur_line = self._lines[line_idx + token.start[0] - 1]
-            self.names.append(Node(
+            self.nodes.append(Node(
                 token.string,
                 token.start[0] + line_idx,
                 # Exact byte offset of the token
@@ -212,7 +209,7 @@ class Visitor:
         """
         decorators = node.decorator_list
         for decorator in decorators:
-            self._visit(decorator)
+            self.visit(decorator)
         del node.decorator_list
         line_idx = node.lineno - 1
         # Guess offset of the name (length of the keyword + 1)
@@ -229,7 +226,7 @@ class Visitor:
             token = advance(tokens)
             lineno = token.start[0] + line_idx
             column = token.start[1]
-        self.names.append(Node(node.name, lineno, column, self._cur_env))
+        self.nodes.append(Node(node.name, lineno, column, self._cur_env))
 
     def _mark_self(self, node):
         """Mark self/cls argument if the current function has one.
@@ -274,7 +271,7 @@ class Visitor:
             True,
         )
         node.value.self_target = new_node # TODO
-        self.names.append(new_node)
+        self.nodes.append(new_node)
 
     def _iter_node(self, node):
         """Iterate through fields of the node."""
@@ -289,8 +286,8 @@ class Visitor:
                 for item in value:
                     if type(item) == str:
                         continue
-                    self._visit(item)
+                    self.visit(item)
             # We would want to use isinstance(value, AST) here. Not sure how
             # much more expensive that is, though.
             elif value_type not in (str, int, bytes):
-                self._visit(value)
+                self.visit(value)

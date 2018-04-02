@@ -8,6 +8,9 @@ from semshi import parser
 from .conftest import parse, make_parser, make_tree, dump_dict, dump_ast, dump_symtable
 
 
+# TODO Reformat multiline stirngs from """ to '''
+
+
 def test_label():
     assert label('foo') == 'semshiFoo'
 
@@ -657,8 +660,10 @@ def test_exclude_types():
 
 
 def test_exclude_types_same_nodes():
-    # TODO same_node should work on excluded types
-    pass
+    parser = Parser(exclude=[UNRESOLVED])
+    add, clear = parser.parse('a, a')
+    assert len(add) == 0
+    assert [n.pos for n in parser.same_nodes((1, 0))] == [(1, 0), (1, 3)]
 
 
 class TestNode:

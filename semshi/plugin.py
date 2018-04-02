@@ -79,7 +79,7 @@ class Plugin:
         try:
             handler = self.handlers[buf]
         except KeyError:
-            handler = BufferHandler(self, buf, exclude=[])
+            handler = BufferHandler(self, buf, exclude=[LOCAL])
             self.handlers[buf] = handler
         self.current_handler = handler
 

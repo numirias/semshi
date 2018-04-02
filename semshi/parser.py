@@ -26,6 +26,11 @@ class Parser:
 
     @debug_time
     def parse(self, code):
+        """Parse code and return tuple (add, remove) of added and removed nodes
+        since last run.
+
+        Raises UnparsableError() if a syntax or recursion error occurred.
+        """
         try:
             return self._parse(code)
         except RecursionError as e:
@@ -40,9 +45,12 @@ class Parser:
         return [n for n in nodes if n.hl_group not in self._excluded]
 
     def _parse(self, code):
-        """Parse code and return added and removed nodes since last run."""
+        """Inner parse function.
+
+        Return tuple (add, remove) of added and removed nodes since last run.
+        """
         new_lines = code.split('\n')
-        new_nodes = self._filter_excluded(self._make_nodes(code, new_lines))
+        new_nodes = self._make_nodes(code, new_lines)
         if self._minor_change(self._lines, new_lines):
             add, rem, keep = self._diff(self._nodes, new_nodes)
             self._nodes = keep + add
@@ -51,7 +59,7 @@ class Parser:
             self._nodes = add
         self._lines = new_lines
         logger.debug('nodes: +%d,  -%d', len(add), len(rem))
-        return (add, rem)
+        return (self._filter_excluded(add), self._filter_excluded(rem))
 
     def _make_nodes(self, code, lines=None):
         """Return nodes in code.
@@ -100,8 +108,8 @@ class Parser:
     @staticmethod
     @debug_time
     def _diff(old_nodes, new_nodes):
-        """Return difference between iterables old_nodes and new_nodes as three
-        lists of nodes to add, remove and keep.
+        """Return difference between iterables of nodes old_nodes and new_nodes
+        as three lists of nodes to add, remove and keep.
         """
         add_iter = iter(sorted(new_nodes))
         rem_iter = iter(sorted(old_nodes))
