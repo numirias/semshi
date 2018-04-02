@@ -3,7 +3,8 @@ from textwrap import dedent
 
 from semshi.parser import Parser
 
-from  .astpretty import pprint
+# from .astpretty import pprint
+
 
 def make_tree(names):
     root = {}

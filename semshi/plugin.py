@@ -2,10 +2,11 @@ import neovim
 
 from .handler import BufferHandler
 from .node import LOCAL
-from .util import logger, debug_time
+from .util import logger
 
 
-pattern  = '*.py'
+pattern = '*.py'
+
 
 def if_enabled(func):
     def wrapper(self):
@@ -13,7 +14,7 @@ def if_enabled(func):
             self.active = self.vim.eval('get(g:, \'semshi_enabled\', 0)')
         if not self.active:
             return
-        return func(self)
+        func(self)
     return wrapper
 
 
@@ -25,10 +26,6 @@ class Plugin:
         self.active = None
         self.handlers = {}
         self.current_handler = None
-
-    @neovim.autocmd('VimEnter', pattern=pattern, sync=False)
-    def event_vim_enter(self):
-        logger.debug('vim enter')
 
     @neovim.autocmd('BufEnter', pattern=pattern, sync=False)
     @if_enabled
@@ -68,7 +65,7 @@ class Plugin:
 
     @neovim.command('Semshi', range='', nargs='*', sync=True)
     def cmd_semshi(self, args, range):
-        self.vim.out_write('This is semshi.\n')
+        self.vim.out_write('This is semshi. %s %s\n' % (args, range))
 
     def visible_area_changed(self):
         self.update_viewport()
@@ -102,7 +99,8 @@ class Plugin:
             return
         # Don't specify line range to clear explicitly because we can't
         # reliably determine the correct range
-        calls = [('nvim_buf_clear_highlight', (buf, n.id, 0, -1)) for n in nodes]
+        calls = [('nvim_buf_clear_highlight',
+                  (buf, n.id, 0, -1)) for n in nodes]
         self.call_atomic_async(calls)
 
     def call_atomic_async(self, calls):
@@ -110,4 +108,4 @@ class Plugin:
         # https://github.com/neovim/python-client/issues/310
         batch_size = 3000
         for i in range(0, len(calls), batch_size):
-            self.vim.api.call_atomic(calls[i:i+batch_size], async=True)
+            self.vim.api.call_atomic(calls[i:i + batch_size], async=True)

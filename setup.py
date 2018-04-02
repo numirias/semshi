@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='semshi',
-    description='Real semantic syntax highlighting for Python',
+    description='Semantic Syntax Highlighting for Python',
     packages=['semshi'],
     author='numirias',
     author_email='numirias@users.noreply.github.com',
@@ -13,7 +13,7 @@ setup(
     python_requires='>=3',
     install_requires=[
         'pytest>=3.3.2',
-        'pytest-metadata',
+        'neovim',
     ],
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',

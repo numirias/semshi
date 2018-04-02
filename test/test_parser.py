@@ -303,6 +303,7 @@ def test_lambda():
     assert root['names'] == ['y']
 
 
+@pytest.mark.skipif('sys.version_info < (3, 6)')
 def test_fstrings():
     assert [n.name for n in parse('f\'{foo}\'')] == ['foo']
 

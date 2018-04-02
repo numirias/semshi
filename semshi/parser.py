@@ -3,7 +3,6 @@ from collections import Iterable
 from functools import singledispatch
 import symtable
 
-from .node import Node
 from .util import logger, debug_time
 from .visitor import visitor
 
@@ -17,8 +16,8 @@ class UnparsableError(Exception):
 
 class Parser:
 
-    def __init__(self, exclude=[]):
-        self._excluded = exclude
+    def __init__(self, exclude=None):
+        self._excluded = exclude or []
         self._lines = []
         self._nodes = []
         self.same_nodes = singledispatch(self.same_nodes)
@@ -72,13 +71,15 @@ class Parser:
         symtable_root = self._make_symtable(code)
         return visitor(lines, symtable_root, ast_root)
 
+    @staticmethod
     @debug_time
-    def _make_ast(self, code):
+    def _make_ast(code):
         """Return AST for code."""
         return ast.parse(code)
 
+    @staticmethod
     @debug_time
-    def _make_symtable(self, code):
+    def _make_symtable(code):
         """Return symtable for code."""
         return symtable.symtable(code, '?', 'exec')
 
@@ -154,7 +155,7 @@ class Parser:
                 return node
         return None
 
-    def same_nodes(self, cur_node):
+    def same_nodes(self, cur_node): # pylint: disable=method-hidden
         """Return nodes with the same scope as cur_node.
 
         The same scope is to be understood as all nodes with the same base

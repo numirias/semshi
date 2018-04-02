@@ -1,15 +1,14 @@
-from ast import (AST, AsyncFunctionDef, Attribute, ClassDef, DictComp, Eq,
-                 FunctionDef, GeneratorExp, Global, Gt, GtE, Import,
-                 ImportFrom, Lambda, ListComp, Load, Lt, LtE, Module, Name,
-                 NameConstant, NotEq, Num, SetComp, Store, Str, Try, arg,
-                 arguments, comprehension)
-import io
+# pylint: disable=unidiomatic-typecheck
+from ast import (AsyncFunctionDef, Attribute, ClassDef, DictComp, Eq,
+                 FunctionDef, GeneratorExp, Gt, GtE, Import, ImportFrom,
+                 Lambda, ListComp, Load, Lt, LtE, Module, Name, NameConstant,
+                 NotEq, Num, SetComp, Store, Str, Try, arg)
 from itertools import count
-from token import NAME, OP, tok_name
+from token import NAME, OP
 from tokenize import tokenize
 
 from .node import Node
-from .util import debug_time, logger
+from .util import debug_time
 
 
 # Node types which introduce a new scope
@@ -24,11 +23,12 @@ def tokenize_lines(lines):
 def advance(tokens, s=None, type=NAME):
     """Advance token stream."""
     if s is None:
-        return next(t for t in tokens if t.type == type)
-    if isinstance(s, str):
-        return next(t for t in tokens if t.type == type and t.string == s)
+        cond = lambda token: True
+    elif isinstance(s, str):
+        cond = lambda token: token.string == s
     else:
-        return next(t for t in tokens if t.type == type and t.string in s)
+        cond = lambda token: token.string in s
+    return next(t for t in tokens if t.type == type and cond(t))
 
 
 @debug_time
@@ -167,7 +167,7 @@ class Visitor:
         using the tokenize module is slow, we only use it where absolutely
         necessary.
         """
-        # TODO Don't compare position if just one import in that line (speed up)
+        # TODO Skip tokenization for simple imports?
         line_idx = node.lineno - 1
         tokens = tokenize_lines(self._lines[i] for i in count(line_idx))
         while True:
@@ -180,7 +180,7 @@ class Visitor:
             # ...until we found the matching one.
             if offset >= node.col_offset:
                 break
-        for alias, remaining in zip(node.names, count(len(node.names)-1, -1)):
+        for alias, more in zip(node.names, count(1 - len(node.names))):
             if alias.name == '*':
                 continue # TODO Handle wildcard imports
             # If it's an "as" alias import...
@@ -197,7 +197,7 @@ class Visitor:
                 self._cur_env,
             ))
             # If there are more imports in that import statement...
-            if remaining:
+            if more:
                 # ...they must be comma-separated, so advance to next comma.
                 advance(tokens, ',', OP)
 

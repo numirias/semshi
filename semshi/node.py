@@ -1,8 +1,6 @@
 import builtins
 from itertools import count
 
-from .util import logger
-
 
 def label(s):
     return 'semshi%s' % s.title()
@@ -48,22 +46,29 @@ class Node:
             try:
                 self.symbol = table.lookup(self.symname)
             except KeyError:
-                raise Exception('%s can\'t lookup "%s".' % (self, self.symname))
+                raise Exception('%s can\'t lookup "%s"' % (self, self.symname))
         self.hl_group = self._make_hl_group()
         self._tup = (self.lineno, self.col, self.hl_group, self.name)
 
     def __lt__(self, other):
-        return self._tup < other._tup 
+        return self._tup < other._tup # pylint: disable=protected-access
 
     def __eq__(self, other):
-        return self._tup == other._tup
+        return self._tup == other._tup # pylint: disable=protected-access
 
     def __hash__(self):
         # TODO Currently only required for tests
         return hash(self._tup)
 
     def __repr__(self):
-        return '<%s %s %s (%s, %s) %d>' % (self.name, self.hl_group[6:], '.'.join([x.get_name() for x in self.env]), self.lineno, self.col, self.id)
+        return '<%s %s %s (%s, %s) %d>' % (
+            self.name,
+            self.hl_group[6:],
+            '.'.join([x.get_name() for x in self.env]),
+            self.lineno,
+            self.col,
+            self.id,
+        )
 
     def _make_hl_group(self):
         if self.is_attr:
@@ -108,7 +113,8 @@ class Node:
         if not name.startswith('__') or name.endswith('__'):
             return name
         try:
-            cls = next(t for t in reversed(self.env) if t.get_type() == 'class')
+            cls = next(t for t in reversed(self.env) if
+                       t.get_type() == 'class')
         except StopIteration:
             return name
         symname = '_' + cls.get_name().lstrip('_') + name

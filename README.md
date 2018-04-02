@@ -1,5 +1,5 @@
 # Semshi
 
-Semshi provides semantic syntax highlighting and refactoring tools for Python in Neovim.
+Semshi provides semantic syntax highlighting for Python in Neovim.
 
-WIP
+(Work in Progress)

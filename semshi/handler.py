@@ -44,7 +44,7 @@ class BufferHandler:
                 if not self.scheduled:
                     return
                 self.scheduled = False
-        except:
+        except Exception:
             import traceback
             logger.error('exception: %s', traceback.format_exc())
             raise
