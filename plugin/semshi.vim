@@ -12,3 +12,8 @@ hi semshiMarked ctermbg=161 ctermfg=white cterm=bold
 
 hi semshiError ctermfg=white ctermbg=160
 sign define semshiError text=E> texthl=semshiError
+
+
+if !exists('g:semshi#enabled')
+    let g:semshi#enabled = 1
+endif

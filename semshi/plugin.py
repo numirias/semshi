@@ -11,7 +11,7 @@ pattern = '*.py'
 def if_enabled(func):
     def wrapper(self):
         if self.active is None:
-            self.active = self.vim.eval('get(g:, \'semshi_enabled\', 0)')
+            self.active = self.vim.eval('get(g:, \'semshi#enabled\', 0)')
         if not self.active:
             return
         func(self)
