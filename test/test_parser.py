@@ -1,7 +1,7 @@
 import os
 from textwrap import dedent
 import pytest
-from semshi.node import Node, label, UNRESOLVED, FREE, SELF, PARAM, BUILTIN, GLOBAL, LOCAL, IMPORTED
+from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAM, BUILTIN, GLOBAL, LOCAL, IMPORTED
 from semshi.parser import Parser, UnparsableError
 from semshi import parser
 
@@ -11,8 +11,8 @@ from .conftest import parse, make_parser, make_tree, dump_dict, dump_ast, dump_s
 # TODO Reformat multiline stirngs from """ to '''
 
 
-def test_label():
-    assert label('foo') == 'semshiFoo'
+def test_group():
+    assert group('foo') == 'semshiFoo'
 
 
 def test_basic():

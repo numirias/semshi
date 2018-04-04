@@ -4,12 +4,11 @@ syntax on
 set nocompatible
 colorscheme pax
 
-let &runtimepath.=','.getcwd()
+let &runtimepath .= ',' . getcwd()
+let $NVIM_RPLUGIN_MANIFEST = './script/rplugin.vim'
 
-let mapleader = ","
+let mapleader = ','
 
 noremap <silent> <S-j> 4j
 noremap <silent> <S-k> 4k
 noremap <silent> <Leader>q :q<CR>
-
-let $NVIM_RPLUGIN_MANIFEST = './script/rplugin.vim'

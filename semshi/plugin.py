@@ -1,7 +1,7 @@
 import neovim
 
 from .handler import BufferHandler
-from .node import LOCAL
+from .node import groups
 from .util import logger
 
 
@@ -26,11 +26,16 @@ class Plugin:
         self.active = None
         self.handlers = {}
         self.current_handler = None
+        self._exclude = None
+
+    @neovim.autocmd('VimEnter', pattern=pattern, sync=False)
+    def event_vim_enter(self):
+        excluded = self.vim.eval('g:semshi#excluded_groups')
+        self._exclude = [groups[e] for e in excluded]
 
     @neovim.autocmd('BufEnter', pattern=pattern, sync=False)
     @if_enabled
     def event_buf_enter(self):
-        logger.debug('bufenter')
         self.switch_handler()
         # TODO set these elsewehere and just once
         self.update_viewport()
@@ -76,7 +81,7 @@ class Plugin:
         try:
             handler = self.handlers[buf]
         except KeyError:
-            handler = BufferHandler(self, buf, exclude=[LOCAL])
+            handler = BufferHandler(self, buf, exclude=self._exclude)
             self.handlers[buf] = handler
         self.current_handler = handler
 

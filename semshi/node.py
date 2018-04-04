@@ -2,20 +2,25 @@ import builtins
 from itertools import count
 
 
-def label(s):
-    return 'semshi%s' % s.title()
+groups = {}
 
 
-UNRESOLVED = label('unresolved')
-ATTR = label('attr')
-BUILTIN = label('builtin')
-FREE = label('free')
-GLOBAL = label('global')
-PARAM = label('param')
-SELF = label('self')
-IMPORTED = label('imported')
-LOCAL = label('local')
-MARKED = label('marked')
+def group(s): # TODO Make enum? (Fast enough?)
+    label = 'semshi%s' % s.title()
+    groups[s] = label
+    return label
+
+
+UNRESOLVED = group('unresolved')
+ATTR = group('attr')
+BUILTIN = group('builtin')
+FREE = group('free')
+GLOBAL = group('global')
+PARAM = group('param')
+SELF = group('self')
+IMPORTED = group('imported')
+LOCAL = group('local')
+MARKED = group('marked')
 
 more_builtins = {'__file__', '__path__', '__cached__'}
 builtins = set(vars(builtins)) | more_builtins

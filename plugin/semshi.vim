@@ -17,3 +17,7 @@ sign define semshiError text=E> texthl=semshiError
 if !exists('g:semshi#enabled')
     let g:semshi#enabled = 1
 endif
+
+if !exists('g:semshi#excluded_groups')
+    let g:semshi#excluded_groups = ['local']
+endif
