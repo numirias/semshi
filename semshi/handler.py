@@ -15,6 +15,7 @@ class BufferHandler:
         self.add_pending = []
         self._parser = Parser(exclude=exclude)
         self._thread = None
+        self._selected_nodes = []
 
     def set_viewport(self, start, stop): # TODO make assignment
         range = stop - start
@@ -52,17 +53,14 @@ class BufferHandler:
     def _update_step(self):
         code = self._current_code()
         add, rem = self._parser.parse(code)
-
         # Remove nodes from add_pending which should be cleared anyway
         remaining = list(self._remove_from_pending(rem))
         logger.debug('remaining %d', len((remaining)))
         visible_add, hidden_add = self._visible_and_hidden(add)
         # Add new adds which aren't visible to pending
         self.add_pending += hidden_add
-
         self.update_highlights(visible_add, remaining)
-
-        cursor = self.wait_for(lambda: self.plugin.vim.current.window.cursor)
+        cursor = self._wait_for(lambda: self.plugin.vim.current.window.cursor)
         self.mark_selected(cursor)
 
     def _visible_and_hidden(self, nodes):
@@ -76,7 +74,7 @@ class BufferHandler:
                 hidden.append(node)
         return visible, hidden
 
-    def wait_for(self, func):
+    def _wait_for(self, func):
         """Run func asynchronously, block until done and return result."""
         event = threading.Event()
         res = None
@@ -91,7 +89,7 @@ class BufferHandler:
     @debug_time
     def _current_code(self):
         """Return current buffer content."""
-        lines = self.wait_for(lambda: self.buf[:])
+        lines = self._wait_for(lambda: self.buf[:])
         code = '\n'.join(lines)
         return code
 
@@ -121,5 +119,8 @@ class BufferHandler:
         nodes = self._parser.same_nodes(cursor)
         start, stop = self._view
         nodes = [n for n in nodes if start <= n.lineno <= stop]
+        if nodes == self._selected_nodes:
+            return
+        self._selected_nodes = nodes
         self.buf.clear_highlight(Node.MARK_ID)
         self.plugin.add_highlights([n.hl(True) for n in nodes], self.buf)
