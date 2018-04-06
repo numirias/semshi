@@ -7,15 +7,17 @@ from .node import Node
 
 class BufferHandler:
 
-    def __init__(self, plugin, buffer, exclude=None):
+    def __init__(self, plugin, buffer):
         self.plugin = plugin
         self.buf = buffer
         self.scheduled = False
         self._view = (0, 0)
         self.add_pending = []
-        self._parser = Parser(exclude=exclude)
+        logger.debug('reading options')
+        self._parser = Parser(exclude=self.plugin.options.excluded_hl_groups)
         self._thread = None
         self._selected_nodes = []
+        self._mark_original_node = self.plugin.options.mark_original_node
 
     def set_viewport(self, start, stop): # TODO make assignment
         range = stop - start
@@ -116,7 +118,7 @@ class BufferHandler:
     @debug_time
     def mark_selected(self, cursor):
         # TODO Make async?
-        nodes = self._parser.same_nodes(cursor)
+        nodes = self._parser.same_nodes(cursor, self._mark_original_node)
         start, stop = self._view
         nodes = [n for n in nodes if start <= n.lineno <= stop]
         if nodes == self._selected_nodes:

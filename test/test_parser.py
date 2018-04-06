@@ -233,7 +233,6 @@ def test_self_target():
             self.abc
     """)
     names = parser._nodes
-    print(names)
     assert names[0].target is None
     last_self = names[-1]
     abc = names[-2]
@@ -484,7 +483,6 @@ def test_base_scope_nonlocal_free():
             a = 1
     """)
     foo, foo_a, bar, bar_a = parser._nodes
-    print(bar_a.symbol.is_free(), bar_a.base_table())
     assert set(parser.same_nodes(foo_a)) == {foo_a, bar_a}
 
 
@@ -513,6 +511,12 @@ def test_attributes():
     b_gg, c_gg, d_gg, e_hh = names
     same_nodes = set(parser.same_nodes(c_gg))
     assert same_nodes == {c_gg, d_gg}
+
+
+def test_same_nodes_exclude_current():
+    parser = make_parser('a, a, a')
+    a0, a1, a2 = parser._nodes
+    assert set(parser.same_nodes(a0, mark_original=False)) == {a1, a2}
 
 
 @pytest.mark.xfail

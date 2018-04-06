@@ -155,7 +155,8 @@ class Parser:
                 return node
         return None
 
-    def same_nodes(self, cur_node): # pylint: disable=method-hidden
+    # pylint: disable=method-hidden
+    def same_nodes(self, cur_node, mark_original=True):
         """Return nodes with the same scope as cur_node.
 
         The same scope is to be understood as all nodes with the same base
@@ -175,12 +176,14 @@ class Parser:
                 continue
             if node.name != cur_name:
                 continue
+            if not mark_original and node is cur_node:
+                continue
             if node.base_table() == base_table:
                 yield node
 
-    def _same_nodes_cursor(self, cursor):
+    def _same_nodes_cursor(self, cursor, mark_original=True):
         """Return nodes with the same scope as node at the cursor position."""
         cur_node = self.node_at(cursor)
         if cur_node is None:
             return []
-        return self.same_nodes(cur_node)
+        return self.same_nodes(cur_node, mark_original)

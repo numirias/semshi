@@ -14,10 +14,14 @@ hi semshiError ctermfg=white ctermbg=160
 sign define semshiError text=E> texthl=semshiError
 
 
-if !exists('g:semshi#enabled')
-    let g:semshi#enabled = 1
+if !exists('g:semshi#active')
+    let g:semshi#active = 1
 endif
 
-if !exists('g:semshi#excluded_groups')
-    let g:semshi#excluded_groups = ['local']
+if !exists('g:semshi#excluded_hl_groups')
+    let g:semshi#excluded_hl_groups = ['local']
+endif
+
+if !exists('g:semshi#mark_original_node')
+    let g:semshi#mark_original_node = 0
 endif
