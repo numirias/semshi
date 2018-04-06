@@ -12,15 +12,15 @@ def group(s): # TODO Make enum? (Fast enough?)
 
 
 UNRESOLVED = group('unresolved')
-ATTR = group('attr')
+ATTR = group('attribute')
 BUILTIN = group('builtin')
 FREE = group('free')
 GLOBAL = group('global')
-PARAM = group('param')
+PARAM = group('parameter')
 SELF = group('self')
 IMPORTED = group('imported')
 LOCAL = group('local')
-MARKED = group('marked')
+MARKED = group('selected')
 
 more_builtins = {'__file__', '__path__', '__cached__'}
 builtins = set(vars(builtins)) | more_builtins
@@ -148,7 +148,7 @@ class Node:
                 return table
         return None
 
-    def hl(self, marked=False):
+    def hl(self, marked=False): # TODO Speed up by removing kwarg?
         """Return tuple required for highlighting the node."""
         if marked:
             id = self.MARK_ID

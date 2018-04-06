@@ -34,7 +34,10 @@ class Options:
         return bool(self._option('active'))
 
     def _option_excluded_hl_groups(self):
-        return [groups[g] for g in self._option('excluded_hl_groups')]
+        try:
+            return [groups[g] for g in self._option('excluded_hl_groups')]
+        except KeyError as e:
+            raise Exception('"%s" is an unknown highlight group.' % e.args[0])
 
     def _option_mark_original_node(self):
         return bool(self._option('mark_original_node'))
