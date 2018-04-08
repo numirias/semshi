@@ -90,7 +90,7 @@ def test_class_scopes():
             a
     """)
     root = make_tree(names)
-    assert root['names'] == ['a', 'x', 'z', 'A']
+    assert root['names'] == ['a', 'A', 'x', 'z']
 
 
 def test_import_scopes_and_positions():
@@ -224,6 +224,16 @@ def test_self_param():
     ]
 
 
+def test_self_with_decorator():
+    names = parse('''
+    class Foo:
+        @decorator(lambda k: k)
+        def x(self):
+            self
+    ''')
+    assert names[-1].hl_group == SELF
+
+
 def test_self_target():
     """The target of a self with an attribute should be the attribute node."""
     parser = make_parser("""
@@ -316,7 +326,7 @@ def test_type_hints():
     """)
     root = make_tree(names)
     assert root['names'] == [
-        'dd', 'A', 'D', 'C', 'E', 'z', 'f', 'y', 'X', 'f2'
+        'dd','f', 'A', 'D', 'C', 'E', 'z', 'y', 'f2', 'X'
     ]
 
 

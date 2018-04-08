@@ -13,7 +13,6 @@ class BufferHandler:
         self.scheduled = False
         self._view = (0, 0)
         self.add_pending = []
-        logger.debug('reading options')
         self._parser = Parser(exclude=self.plugin.options.excluded_hl_groups)
         self._thread = None
         self._selected_nodes = []
@@ -30,7 +29,6 @@ class BufferHandler:
         """
         thread = self._thread
         if thread is not None and thread.is_alive():
-            logger.debug('update scheduled')
             self.scheduled = True
             return
         thread = threading.Thread(target=self._update_loop)

@@ -77,16 +77,17 @@ class Visitor:
             self._visit_import(node)
         elif type_ is arg:
             self._visit_arg(node)
-        elif type_ in (AsyncFunctionDef, FunctionDef, Lambda):
+        elif type_ in (FunctionDef, Lambda, AsyncFunctionDef):
             self._visit_arg_defaults(node)
-        elif type_ in (DictComp, SetComp, ListComp, GeneratorExp):
+        elif type_ in (ListComp, SetComp, DictComp, GeneratorExp):
             self._visit_comp(node)
-        elif type_ is ClassDef:
-            self._visit_class_meta(node)
-        if type_ in (AsyncFunctionDef, FunctionDef):
-            self._visit_args(node)
-        if type_ in (AsyncFunctionDef, ClassDef, FunctionDef):
+        if type_ in (FunctionDef, ClassDef, AsyncFunctionDef):
             self._visit_class_function_definition(node)
+            if type_ is ClassDef:
+                self._visit_class_meta(node)
+            else:
+                self._visit_args(node)
+                self._mark_self(node)
         # Either make a new block scope...
         if type_ in BLOCKS:
             self._visit_block(node)
@@ -156,7 +157,6 @@ class Visitor:
             del arg.annotation
         self.visit(node.returns)
         del node.returns
-        self._mark_self(node)
 
     def _visit_import(self, node):
         """Visit import statement.
