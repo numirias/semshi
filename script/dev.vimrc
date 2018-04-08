@@ -6,6 +6,7 @@ colorscheme pax
 
 set noswapfile
 set hidden
+
 set shiftwidth=4
 
 let &runtimepath .= ',' . getcwd()
