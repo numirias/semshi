@@ -53,8 +53,8 @@ class Plugin:
         self._handlers = {}
         self._current_handler = None
 
-    # Needs to be sync=True because we have to make sure that switching the
-    # buffer handler is completed before other events are handled.
+    # Must not be async because we have to make sure that switching the buffer
+    # handler is completed before other events are handled.
     @neovim.autocmd('BufEnter', pattern=pattern, sync=True)
     @if_active
     def event_buf_enter(self):

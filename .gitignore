@@ -11,3 +11,4 @@ build/
 dist/
 .pytest_cache/
 rplugin.vim
+.coverage.*
