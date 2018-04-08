@@ -4,6 +4,9 @@ syntax on
 set nocompatible
 colorscheme pax
 
+set noswapfile
+set hidden
+
 let &runtimepath .= ',' . getcwd()
 let $NVIM_RPLUGIN_MANIFEST = './script/rplugin.vim'
 
