@@ -6,6 +6,7 @@ colorscheme pax
 
 set noswapfile
 set hidden
+set shiftwidth=4
 
 let &runtimepath .= ',' . getcwd()
 let $NVIM_RPLUGIN_MANIFEST = './script/rplugin.vim'
@@ -39,6 +40,8 @@ function! CustomHighlights()
     hi link pythonDecorator pythonStatement
     hi link pythonException pythonStatement
     hi link pythonConditional pythonStatement
+    "pythonRepeat is used for for/while loops
+    hi link pythonRepeat pythonStatement
 
     hi link pythonDecoratorName Normal
 

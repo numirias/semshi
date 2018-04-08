@@ -148,7 +148,7 @@ class Node:
                 return table
         return None
 
-    def hl(self, marked=False): # TODO Speed up by removing kwarg?
+    def hl(self, marked=False):
         """Return tuple required for highlighting the node."""
         if marked:
             id = self.MARK_ID
