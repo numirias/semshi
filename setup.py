@@ -1,3 +1,4 @@
+# TODO Remove setup?
 from setuptools import setup
 
 
@@ -8,7 +9,7 @@ setup(
     author='numirias',
     author_email='numirias@users.noreply.github.com',
     version='0.1.0',
-    url='TODO',
+    url='https://github.com/numirias/semshi',
     license='MIT',
     python_requires='>=3',
     install_requires=[
