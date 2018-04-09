@@ -148,16 +148,6 @@ class Node:
                 return table
         return None
 
-    def hl(self, marked=False):
-        """Return tuple required for highlighting the node."""
-        if marked:
-            id = self.MARK_ID
-            hl_group = MARKED
-        else:
-            id = self.id
-            hl_group = self.hl_group
-        return (id, hl_group, self.lineno - 1, self.col, self.end)
-
     @property
     def pos(self):
         return (self.lineno, self.col)

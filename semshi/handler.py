@@ -2,38 +2,79 @@ import threading
 
 from .parser import Parser, UnparsableError
 from .util import logger, debug_time
-from .node import Node
+from .node import Node, MARKED
 
 
 class BufferHandler:
+    """Handler for a buffer.
 
-    def __init__(self, plugin, buffer):
-        self.plugin = plugin
-        self.buf = buffer
-        self.scheduled = False
+    The handler runs the parser, adds and removes highlights, keeps tracks of
+    which highlights are visible and which ones need to be added or removed.
+    """
+    def __init__(self, add_hls, clear_hls, buffer_lines, cursor,
+                 excluded_hl_groups, mark_original_node):
+        self._add_hls = add_hls
+        self._clear_hls = clear_hls
+        self._buffer_lines = buffer_lines
+        self._cursor = cursor
+        self._parser = Parser(exclude=excluded_hl_groups)
+        self._scheduled = False
         self._view = (0, 0)
-        self.add_pending = []
-        self._parser = Parser(exclude=self.plugin.options.excluded_hl_groups)
         self._thread = None
+        # Nodes which are active but pending to be displayed because they are
+        # in a currently invisible area.
+        self._pending_nodes = []
+        # Nodes which are currently marked as a selected. We keep track of them
+        # to check if they haven't changed between updates.
         self._selected_nodes = []
-        self._mark_original_node = self.plugin.options.mark_original_node
+        self._mark_original_node = mark_original_node
 
-    def set_viewport(self, start, stop): # TODO make assignment
+    def viewport(self, start, stop):
+        """Set viewport to line range from `start` to `stop` and add highlights
+        that have become visible."""
         range = stop - start
         self._view = (start - range, stop + range)
+        self._add_visible_hls()
 
     def update(self):
         """Update.
 
-        Start a thread which reparses the code, updates highlights.
+        Start a thread which reparses the code, update highlights.
         """
         thread = self._thread
+        # If there is an active update thread...
         if thread is not None and thread.is_alive():
-            self.scheduled = True
+            # ...just make sure sure it runs another time.
+            self._scheduled = True
             return
         thread = threading.Thread(target=self._update_loop)
         self._thread = thread
         thread.start()
+
+    @debug_time
+    def mark_selected(self, cursor):
+        """Mark all selected nodes.
+
+        Selected nodes are those with the same name and scope as the one at the
+        cursor position.
+        """
+        # TODO Make async?
+        nodes = self._parser.same_nodes(cursor, self._mark_original_node)
+        start, stop = self._view
+        nodes = [n for n in nodes if start <= n.lineno <= stop]
+        if nodes == self._selected_nodes:
+            return
+        self._selected_nodes = nodes
+        self._clear_hls(nodes_to_hl(nodes, clear=True, marked=True))
+        self._add_hls(nodes_to_hl(nodes, marked=True))
+
+    @debug_time
+    def _add_visible_hls(self):
+        """Add highlights in the current viewport which have not been applied
+        yet."""
+        visible, hidden = self._visible_and_hidden(self._pending_nodes)
+        self._add_hls(nodes_to_hl(visible))
+        self._pending_nodes = hidden
 
     def _update_loop(self):
         try:
@@ -42,28 +83,29 @@ class BufferHandler:
                     self._update_step()
                 except UnparsableError:
                     pass
-                if not self.scheduled:
+                if not self._scheduled:
                     return
-                self.scheduled = False
+                self._scheduled = False
         except Exception:
             import traceback
-            logger.error('exception: %s', traceback.format_exc())
+            logger.error('Exception: %s', traceback.format_exc())
             raise
 
     def _update_step(self):
         code = self._current_code()
         add, rem = self._parser.parse(code)
-        # Remove nodes from add_pending which should be cleared anyway
-        remaining = list(self._remove_from_pending(rem))
-        logger.debug('remaining %d', len((remaining)))
-        visible_add, hidden_add = self._visible_and_hidden(add)
-        # Add new adds which aren't visible to pending
-        self.add_pending += hidden_add
-        self.update_highlights(visible_add, remaining)
-        cursor = self._wait_for(lambda: self.plugin.vim.current.window.cursor)
-        self.mark_selected(cursor)
+        # Remove nodes to be cleared from pending list
+        rem_remaining = list(self._remove_from_pending(rem))
+        add_visible, add_hidden = self._visible_and_hidden(add)
+        # Add all new but hidden nodes to pending list
+        self._pending_nodes += add_hidden
+        # Update highlights by adding all new visible nodes and removing all
+        # old nodes which have been drawn earlier
+        self._update_hls(add_visible, rem_remaining)
+        self.mark_selected(self._cursor())
 
     def _visible_and_hidden(self, nodes):
+        """Bisect nodes into visible and hidden ones."""
         start, end = self._view
         visible = []
         hidden = []
@@ -74,53 +116,34 @@ class BufferHandler:
                 hidden.append(node)
         return visible, hidden
 
-    def _wait_for(self, func):
-        """Run func asynchronously, block until done and return result."""
-        event = threading.Event()
-        res = None
-        def wrapper():
-            nonlocal res
-            res = func()
-            event.set()
-        self.plugin.vim.async_call(wrapper)
-        event.wait()
-        return res
-
     @debug_time
     def _current_code(self):
         """Return current buffer content."""
-        lines = self._wait_for(lambda: self.buf[:])
-        code = '\n'.join(lines)
-        return code
+        return '\n'.join(self._buffer_lines())
 
-    @debug_time(None, lambda s, n: ' %d/%d' % (len(n), len(s.add_pending)))
+    # pylint: disable=protected-access
+    @debug_time(None, lambda s, n: ' %d/%d' % (len(n), len(s._pending_nodes)))
     def _remove_from_pending(self, nodes):
         for node in nodes:
             try:
-                self.add_pending.remove(node)
+                self._pending_nodes.remove(node)
             except ValueError:
                 yield node
 
     @debug_time(None, lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
-    def update_highlights(self, add, clear):
-        # logger.debug('add %d, clear %d', len(add), len(clear))
-        self.plugin.add_highlights([a.hl() for a in add], self.buf)
-        self.plugin.clear_highlights(clear, self.buf)
+    def _update_hls(self, add, clear):
+        self._add_hls(nodes_to_hl(add))
+        self._clear_hls(nodes_to_hl(clear, clear=True))
 
-    def add_visible_highlights(self):
-        """Add highlights in the current viewport which have not been applied
-        yet."""
-        add, self.add_pending = self._visible_and_hidden(self.add_pending)
-        self.plugin.add_highlights([a.hl() for a in add], self.buf)
 
-    @debug_time
-    def mark_selected(self, cursor):
-        # TODO Make async?
-        nodes = self._parser.same_nodes(cursor, self._mark_original_node)
-        start, stop = self._view
-        nodes = [n for n in nodes if start <= n.lineno <= stop]
-        if nodes == self._selected_nodes:
-            return
-        self._selected_nodes = nodes
-        self.buf.clear_highlight(Node.MARK_ID)
-        self.plugin.add_highlights([n.hl(True) for n in nodes], self.buf)
+def nodes_to_hl(nodes, clear=False, marked=False):
+    """Convert list of nodes to highlight tuples which are the arguments to
+    neovim's add_highlight/clear_highlight APIs."""
+    if clear:
+        if marked:
+            return (Node.MARK_ID, 0, -1)
+        return [(n.id, 0, -1) for n in nodes]
+    if marked:
+        id = Node.MARK_ID
+        return [(id, MARKED, n.lineno - 1, n.col, n.end) for n in nodes]
+    return [(n.id, n.hl_group, n.lineno - 1, n.col, n.end) for n in nodes]

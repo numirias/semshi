@@ -55,23 +55,24 @@ def wait_for(func, cond, sleep=.001, tries=1000):
     raise TimeoutError()
 
 
-def test_startup(vim):
+def test_commands(vim):
     vim.command('Semshi')
+    vim.command('Semshi version')
 
 
 def test_no_python_file(vim, host_eval):
-    assert host_eval('plugin._current_handler is None')
+    assert host_eval('plugin._cur_handler is None')
 
 
 def test_python_file(vim, host_eval):
     vim.command('edit /tmp/foo.py')
-    assert host_eval('plugin._current_handler is not None')
+    assert host_eval('plugin._cur_handler is not None')
 
 
 def test_current_nodes(vim, host_eval):
     vim.command('edit /tmp/foo.py')
     vim.current.buffer[:] = ['aaa', 'bbb']
-    node_names = lambda: host_eval('[n.name for n in plugin._current_handler._parser._nodes]')
+    node_names = lambda: host_eval('[n.name for n in plugin._cur_handler._parser._nodes]')
     wait_for(node_names, lambda x: x == ['aaa', 'bbb'])
     vim.feedkeys('yyp')
     wait_for(node_names, lambda x: x == ['aaa', 'aaa', 'bbb'])
@@ -93,7 +94,7 @@ def test_highlights(vim, host_eval):
 def test_switch_handler(vim, host_eval):
     vim.command('edit /tmp/foo.py')
     vim.current.buffer[:] = ['aaa', 'bbb']
-    node_names = lambda: host_eval('[n.name for n in plugin._current_handler._parser._nodes]')
+    node_names = lambda: host_eval('[n.name for n in plugin._cur_handler._parser._nodes]')
     vim.command('edit /tmp/bar.py')
     vim.current.buffer[:] = ['ccc']
     wait_for(node_names, lambda x: x == ['ccc'])
@@ -105,7 +106,7 @@ def test_selected_nodes(vim, host_eval):
     vim.command('edit /tmp/foo.py')
     vim.current.buffer[:] = ['aaa', 'aaa']
     vim.call('setpos', '.', [0, 1,1])
-    node_positions = lambda: host_eval('[n.pos for n in plugin._current_handler._selected_nodes]')
+    node_positions = lambda: host_eval('[n.pos for n in plugin._cur_handler._selected_nodes]')
     wait_for(node_positions, lambda x: x == [[2, 0]])
     vim.call('setpos', '.', [0, 2,1])
     wait_for( node_positions, lambda x: x == [[1, 0]])
@@ -114,7 +115,7 @@ def test_selected_nodes(vim, host_eval):
 def test_option_active():
     vim = start_vim(['--cmd', 'let g:semshi#active = 0'])
     vim.command('edit /tmp/foo.py')
-    assert host_eval(vim)('plugin._current_handler is None')
+    assert host_eval(vim)('plugin._cur_handler is None')
 
 
 def test_option_excluded_hl_groups():
@@ -123,7 +124,7 @@ def test_option_excluded_hl_groups():
     # TODO Actually, we don't want to inspect the object but check which
     # highlights are applied - but we can't until the neovim API becomes
     # available.
-    assert host_eval(vim)('plugin._current_handler._parser._excluded == ["semshiGlobal", "semshiImported"]')
+    assert host_eval(vim)('plugin._cur_handler._parser._excluded == ["semshiGlobal", "semshiImported"]')
 
 
 def test_option_mark_original_node():
@@ -131,6 +132,6 @@ def test_option_mark_original_node():
     vim.command('edit /tmp/foo.py')
     vim.current.buffer[:] = ['aaa', 'aaa']
     wait_for(
-        lambda: host_eval(vim)('len(plugin._current_handler._selected_nodes)'),
+        lambda: host_eval(vim)('len(plugin._cur_handler._selected_nodes)'),
         lambda x: x == 2
     )
