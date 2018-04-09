@@ -50,3 +50,7 @@ autocmd FileType python call CustomHighlights()
 
 let g:python_no_builtin_highlight = 1
 let g:python_no_exception_highlight = 1
+
+
+let $SEMSHI_LOG_FILE = '/tmp/semshi.log'
+let $SEMSHI_LOG_LEVEL = 'DEBUG'

@@ -1,13 +1,7 @@
 import functools
 import logging
+import os
 import time
-
-
-logger = logging.getLogger('semshi')
-logger.setLevel(logging.DEBUG)
-fh = logging.FileHandler('/tmp/semshi.log')
-fh.setLevel(logging.DEBUG)
-logger.addHandler(fh)
 
 
 def debug_time(label_or_callable=None, detail=None):
@@ -34,3 +28,18 @@ def debug_time(label_or_callable=None, detail=None):
     if callable(label_or_callable):
         return inner(label_or_callable)
     return inner
+
+
+def make_logger():
+    logger = logging.getLogger('semshi')
+    logger.setLevel(logging.ERROR)
+    log_file = os.environ.get('SEMSHI_LOG_FILE')
+    if log_file:
+        handler = logging.FileHandler(log_file)
+        logger.setLevel(os.environ.get('SEMSHI_LOG_LEVEL', logging.ERROR))
+        logger.addHandler(handler)
+    logger.debug('Semshi logger started.')
+    return logger
+
+
+logger = make_logger()
