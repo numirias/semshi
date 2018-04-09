@@ -135,3 +135,17 @@ def test_option_mark_original_node():
         lambda: host_eval(vim)('len(plugin._cur_handler._selected_nodes)'),
         lambda x: x == 2
     )
+
+
+synstack_cmd = 'map(synstack(line("."), col(".")), "synIDattr(v:val, \'name\')")'
+
+
+def test_option_no_default_builtin_highlight():
+    vim = start_vim()
+    vim.command('set syntax=python')
+    vim.current.buffer[:] = ['len']
+    assert vim.eval(synstack_cmd) == []
+    vim = start_vim(['--cmd', 'let g:semshi#no_default_builtin_highlight = 0'])
+    vim.command('set syntax=python')
+    vim.current.buffer[:] = ['len']
+    assert vim.eval(synstack_cmd) == ['pythonBuiltin']

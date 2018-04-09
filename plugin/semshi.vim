@@ -25,3 +25,38 @@ endif
 if !exists('g:semshi#mark_original_node')
     let g:semshi#mark_original_node = 0
 endif
+
+if !exists('g:semshi#no_default_builtin_highlight')
+    let g:semshi#no_default_builtin_highlight = 1
+endif
+
+if !exists('g:semshi#simplify_markup')
+    let g:semshi#simplify_markup = 1
+endif
+
+function! s:remove_builtin_extra()
+    syn keyword pythonKeyword True False None
+    hi link pythonKeyword pythonNumber
+endfunction
+
+if g:semshi#no_default_builtin_highlight
+    autocmd FileType python call s:remove_builtin_extra()
+    let g:python_no_builtin_highlight = 1
+    let g:python_no_exception_highlight = 1
+endif
+
+function! s:simplify_markup()
+    hi link pythonImport pythonStatement
+    hi link pythonInclude pythonStatement
+    hi link pythonRaiseFromStatement pythonStatement
+    hi link pythonDecorator pythonStatement
+    hi link pythonException pythonStatement
+    hi link pythonConditional pythonStatement
+    hi link pythonRepeat pythonStatement
+
+    hi link pythonDecoratorName Normal
+endfunction
+
+if g:semshi#simplify_markup
+    autocmd FileType python call s:simplify_markup()
+endif
