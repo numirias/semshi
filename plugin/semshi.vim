@@ -42,10 +42,21 @@ endfunction
 if g:semshi#no_default_builtin_highlight
     autocmd FileType python call s:remove_builtin_extra()
     let g:python_no_builtin_highlight = 1
+    hi link pythonBuiltin NONE
     let g:python_no_exception_highlight = 1
+    hi link pythonExceptions NONE
+    hi link pythonAttribute NONE
+    hi link pythonDecoratorName NONE
+
+    "For python-syntax
+    let g:python_highlight_class_vars = 0
+    let g:python_highlight_builtins = 0
+    let g:python_highlight_exceptions = 0
+    hi link pythonDottedName NONE
 endif
 
 function! s:simplify_markup()
+    hi link pythonConditional pythonStatement
     hi link pythonImport pythonStatement
     hi link pythonInclude pythonStatement
     hi link pythonRaiseFromStatement pythonStatement
@@ -54,7 +65,8 @@ function! s:simplify_markup()
     hi link pythonConditional pythonStatement
     hi link pythonRepeat pythonStatement
 
-    hi link pythonDecoratorName Normal
+    "For python-syntax
+    let g:python_highlight_operators = 0
 endfunction
 
 if g:semshi#simplify_markup
