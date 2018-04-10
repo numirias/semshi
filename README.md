@@ -6,7 +6,14 @@
 
 Semshi provides semantic syntax highlighting for Python in Neovim.
 
-(Work in progress)
+Usual syntax highlighters are regex-based and don't get semantics. Semshi performs static analysis of Python code as you type. It builds a syntax tree and symbol table to understand the scope of globals, arguments, attributes, etc. and highlight them differently. This makes code easier to read and lets you quickly recognize if you forgot an import or misspelled a name.
+
+## Features
+
+- Different highlighting of locals, globals, function parameters, builtins, attributes, arguments, free and unresolved names.
+- Highlighting of all currently selected nodes.
+- Highlighting of syntax errors. (TBD)
+- Refactoring tools. (TBD)
 
 ## Installation
 
@@ -23,3 +30,67 @@ Semshi provides semantic syntax highlighting for Python in Neovim.
 - You may also need to run `:UpdateRemotePlugins` to update the plugin manifest.
 
 - (If you insist on manual installation, download the source and place it in a directory in your Vim runtime path.)
+
+
+## Configuration
+
+### Options
+
+You can set these options in your vimrc (`~/.config/nvim/init.vim`):
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `g:semshi#active` | `1` | Activate event handlers. |
+| `g:semshi#excluded_hl_groups` | `['local']` | List of highlight groups to not highlight. Chose from `unresolved`, `attribute`, `builtin`, `free`, `global`, `param`, `self`, `imported`, `local`, `marked`. (It's recommended to keep `local` in the list because highlighting all locals in a large file can cause performance issues.) |
+| `g:semshi#mark_original_node ` | ` 0` | When marking selected nodes, mark node under the cursor, too. |
+| `g:semshi#no_default_builtin_highlight` | `1` | Disable builtin highlighting by vim's own Python syntax highlighter, because that's Semshi's job. If you turn it off, vim will make incorrect highlights. |
+| `g:semshi#simplify_markup` | `1` | Simplify Python markup. Semshi introduces lots of new colors, so this option makes the highlighting of other syntax elements less distracting, binding most of them to `pythonStatement`. If you think Semshi messes with your colorscheme too much, try turning this off. |
+
+### Highlights
+
+Semshi sets these highlights (which work best on dark backgrounds):
+
+```VimL
+hi semshiLocal      ctermfg=209 guifg=#ff875f
+hi semshiGlobal     ctermfg=214 guifg=#ffaf00
+hi semshiImported   ctermfg=214 guifg=#ffaf00 cterm=bold gui=bold
+hi semshiParameter  ctermfg=75  guifg=#5fafff
+hi semshiFree       ctermfg=218 guifg=#ffafd7
+hi semshiBuiltin    ctermfg=207 guifg=#ff5fff
+hi semshiAttribute  ctermfg=49  guifg=#00ffaf
+hi semshiSelf       ctermfg=249 guifg=#b2b2b2
+hi semshiUnresolved ctermfg=226 guifg=#ffff00 cterm=underline gui=underline
+hi semshiSelected   ctermfg=231 guifg=#ffffff ctermbg=161 guibg=#d7005f
+```
+If you want to overwrite them in your vimrc, make sure to put them in a function, e.g.:
+
+```VimL
+function MyCustomHighlights()
+    hi semshiGlobal      ctermfg=red guifg=#ff0000
+endfunction
+autocmd FileType python call MyCustomHighlights()
+```
+
+## Usage
+
+Once installed, Semshi automatically parses and highlights code in any open file with a `.py` extension. With every change to the buffer, the code is re-parsed and highlights are updated. When moving the cursor above a name, all nodes with the same name in the same scope are highlighted, too.
+
+But bear in mind that static analysis is limited. For example, wildcard imports (`from foo import *`) and `eval` or `exec` calls can hide symbols which Semshi won't pick up and show them as unresolved. Also, while the syntax is incorrect, highlights can't be updated.
+
+## FAQ
+
+### Is Vim 8 supported?
+
+No. Semshi relies on Neovim's fast highlighting API to update highlights quickly for which there is currently no equivalent in regular Vim. If you think this can be implemented for Vim 8, let me know.
+
+### There are some annoying extra highlights.
+
+You might be using other Python syntax highlighters alongside (such as [python-syntax](https://github.com/vim-python/python-syntax)) which may intefere with Semshi. Try to disable these plugins if they cause problems.
+
+### Sometimes highlights aren't updated.
+
+As you type code, you introduce temporary syntax errors, e.g. when opening a new bracket. Not all syntax errors can be compensated, so Semshi can only refresh highlights when the syntax becomes correct again.
+
+## Contributing
+
+I absolutely need your help with testing and improving Semshi. If you found a bug or have a suggestion, please don't hesitate to [file an issue](https://github.com/numirias/semshi/issues/new).
