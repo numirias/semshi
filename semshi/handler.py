@@ -12,7 +12,7 @@ class BufferHandler:
     which highlights are visible and which ones need to be added or removed.
     """
     def __init__(self, add_hls, clear_hls, code_func, cursor_func,
-                 excluded_hl_groups, mark_original_node):
+                 excluded_hl_groups, mark_selected):
         self._add_hls = add_hls
         self._clear_hls = clear_hls
         self._get_code = code_func
@@ -27,7 +27,7 @@ class BufferHandler:
         # Nodes which are currently marked as a selected. We keep track of them
         # to check if they haven't changed between updates.
         self._selected_nodes = []
-        self._mark_original_node = mark_original_node
+        self._mark_selected = mark_selected
 
     def viewport(self, start, stop):
         """Set viewport to line range from `start` to `stop` and add highlights
@@ -62,7 +62,10 @@ class BufferHandler:
         cursor position.
         """
         # TODO Make async?
-        nodes = self._parser.same_nodes(cursor, self._mark_original_node)
+        if not self._mark_selected:
+            return
+        mark_original = bool(self._mark_selected - 1)
+        nodes = self._parser.same_nodes(cursor, mark_original)
         start, stop = self._view
         nodes = [n for n in nodes if start <= n.lineno <= stop]
         if nodes == self._selected_nodes:

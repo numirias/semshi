@@ -98,7 +98,7 @@ class Plugin:
                 partial(self._code, buf),
                 self._cursor,
                 self._options.excluded_hl_groups,
-                self._options.mark_original_node,
+                self._options.mark_selected_nodes,
             )
             self._handlers[buf] = handler
         self._cur_handler = handler
@@ -109,6 +109,8 @@ class Plugin:
         self._cur_handler.viewport(start, stop)
 
     def _mark_selected(self):
+        if not self._options.mark_selected_nodes:
+            return
         self._cur_handler.mark_selected(self.vim.current.window.cursor)
 
     def _cursor(self, sync):
@@ -189,5 +191,5 @@ class Options:
         except KeyError as e:
             raise Exception('"%s" is an unknown highlight group.' % e.args[0])
 
-    def _option_mark_original_node(self):
-        return bool(self._option('mark_original_node'))
+    def _option_mark_selected_nodes(self):
+        return self._option('mark_selected_nodes')

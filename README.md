@@ -6,13 +6,11 @@
 
 Semshi provides semantic syntax highlighting for Python in Neovim.
 
-Most syntax highlighters are regex-based and unaware of semantics. Semshi performs static analysis of Python code as you type. It asynchronously builds a syntax tree and symbol table to understand the scope of locals, globals, arguments etc. and highlight them differently. This makes code easier to read and lets you quickly detect forgotten imports or misspelled names.
+Most syntax highlighters are regex-based and unaware of semantics. Semshi performs static analysis of Python code as you type. It asynchronously builds a syntax tree and symbol table to understand the scope of locals, globals, arguments etc. and highlight them differently. This makes code easier to read and lets you quickly detect missing imports or misspelled names.
 
 | With Semshi | Without Semshi |
 | --- | --- |
 | ![After](https://i.imgur.com/QUnGdU8.png) | ![Before](https://i.imgur.com/eiD1Miz.png) |
-
-You can see that Semshi doesn't highlight the first `list` as builtin because it has been assigned in the local scope. Also, you can easily recognize arguments (blue)  and globals (orange), and the unresolved names (yellow underlined) are much more obvious.
 
 In above example, Semshi makes it easy to distinguish arguments (blue), globals (orange) and instance attributes (teal). Unlike the default highlighter, it detects that the first `list` is assigned in the local scope and therefore not a builtin anymore. Also, the unresolved names (yellow underlined) are easy to spot.
 
@@ -55,7 +53,7 @@ You can set these options in your vimrc (`~/.config/nvim/init.vim`):
 | --- | --- | --- |
 | `g:semshi#active` | `1` | Activate event handlers. |
 | `g:semshi#excluded_hl_groups` | `['local']` | List of highlight groups to not highlight. Chose from `unresolved`, `attribute`, `builtin`, `free`, `global`, `param`, `self`, `imported`, `local`, `marked`. (It's recommended to keep `local` in the list because highlighting all locals in a large file can cause performance issues.) |
-| `g:semshi#mark_original_node ` | ` 0` | When marking selected nodes, mark node under the cursor, too. |
+| `g:semshi#mark_selected_nodes ` | ` 1` | Mark selected nodes (those with the same name and scope as the one under the cursor). Set to `2` to highlight the node currently under the cursor, too. |
 | `g:semshi#no_default_builtin_highlight` | `1` | Disable builtin highlighting by vim's own Python syntax highlighter, because that's Semshi's job. If you turn it off, vim will add incorrect highlights. |
 | `g:semshi#simplify_markup` | `1` | Simplify Python markup. Semshi introduces lots of new colors, so this option makes the highlighting of other syntax elements less distracting, binding most of them to `pythonStatement`. If you think Semshi messes with your colorscheme too much, try turning this off. |
 

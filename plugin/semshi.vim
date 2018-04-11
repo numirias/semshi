@@ -22,16 +22,16 @@ if !exists('g:semshi#excluded_hl_groups')
     let g:semshi#excluded_hl_groups = ['local']
 endif
 
-if !exists('g:semshi#mark_original_node')
-    let g:semshi#mark_original_node = 0
-endif
-
 if !exists('g:semshi#no_default_builtin_highlight')
     let g:semshi#no_default_builtin_highlight = 1
 endif
 
 if !exists('g:semshi#simplify_markup')
     let g:semshi#simplify_markup = 1
+endif
+
+if !exists('g:semshi#mark_selected_nodes')
+    let g:semshi#mark_selected_nodes = 1
 endif
 
 function! s:remove_builtin_extra()

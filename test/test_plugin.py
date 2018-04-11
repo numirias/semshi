@@ -127,8 +127,27 @@ def test_option_excluded_hl_groups():
     assert host_eval(vim)('plugin._cur_handler._parser._excluded == ["semshiGlobal", "semshiImported"]')
 
 
+def test_option_mark_selected_nodes():
+    vim = start_vim(['--cmd', 'let g:semshi#mark_selected_nodes = 0'])
+    vim.command('edit /tmp/foo.py')
+    vim.current.buffer[:] = ['aaa', 'aaa', 'aaa']
+    time.sleep(0.01)
+    wait_for(
+        lambda: host_eval(vim)('len(plugin._cur_handler._selected_nodes)'),
+        lambda x: x == 0
+    )
+    vim = start_vim()
+    vim.command('edit /tmp/foo.py')
+    vim.current.buffer[:] = ['aaa', 'aaa', 'aaa']
+    time.sleep(0.01)
+    wait_for(
+        lambda: host_eval(vim)('len(plugin._cur_handler._selected_nodes)'),
+        lambda x: x == 2
+    )
+
+
 def test_option_mark_original_node():
-    vim = start_vim(['--cmd', 'let g:semshi#mark_original_node = 1'])
+    vim = start_vim(['--cmd', 'let g:semshi#mark_selected_nodes = 2'])
     vim.command('edit /tmp/foo.py')
     vim.current.buffer[:] = ['aaa', 'aaa']
     wait_for(
