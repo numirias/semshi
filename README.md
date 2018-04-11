@@ -6,13 +6,15 @@
 
 Semshi provides semantic syntax highlighting for Python in Neovim.
 
-Most syntax highlighters are regex-based and don't get semantics. Semshi performs static analysis of Python code as you type. It builds a syntax tree and symbol table to understand the scope of globals, arguments, attributes, etc. and highlight them differently. This makes code easier to read and lets you quickly recognize if you forgot an import or misspelled a name.
+Most syntax highlighters are regex-based and unaware of semantics. Semshi performs static analysis of Python code as you type. It asynchronously builds a syntax tree and symbol table to understand the scope of locals, globals, arguments etc. and highlight them differently. This makes code easier to read and lets you quickly detect forgotten imports or misspelled names.
 
-| Before | After |
+| With Semshi | Without Semshi |
 | --- | --- |
-| ![Before](https://i.imgur.com/eiD1Miz.png) | ![After](https://i.imgur.com/QUnGdU8.png) |
+| ![After](https://i.imgur.com/QUnGdU8.png) | ![Before](https://i.imgur.com/eiD1Miz.png) |
 
 You can see that Semshi doesn't highlight the first `list` as builtin because it has been assigned in the local scope. Also, you can easily recognize arguments (blue)  and globals (orange), and the unresolved names (yellow underlined) are much more obvious.
+
+In above example, Semshi makes it easy to distinguish arguments (blue), globals (orange) and instance attributes (teal). Unlike the default highlighter, it detects that the first `list` is assigned in the local scope and therefore not a builtin anymore. Also, the unresolved names (yellow underlined) are easy to spot.
 
 ## Features
 
@@ -87,6 +89,17 @@ autocmd FileType python call MyCustomHighlights()
 Once installed, Semshi automatically parses and highlights code in any open file with a `.py` extension. With every change to the buffer, the code is re-parsed and highlights are updated. When moving the cursor above a name, all nodes with the same name in the same scope are highlighted, too.
 
 But bear in mind that static analysis is limited. For example, wildcard imports (`from foo import *`) and `eval` or `exec` calls can hide symbols which Semshi won't pick up and show them as unresolved. Also, while the syntax is incorrect, highlights can't be updated.
+
+
+### Commands
+
+The following commands can be executed via `:Semshi <command>`:
+
+| Command | Description |
+| --- | --- |
+| `version` | Show version. |
+| `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
+
 
 ## FAQ
 

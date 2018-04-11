@@ -24,14 +24,14 @@ class Parser:
         self.same_nodes.register(Iterable, self._same_nodes_cursor)
 
     @debug_time
-    def parse(self, code):
+    def parse(self, code, force=False):
         """Parse code and return tuple (add, remove) of added and removed nodes
         since last run.
 
         Raises UnparsableError() if a syntax or recursion error occurred.
         """
         try:
-            return self._parse(code)
+            return self._parse(code, force)
         except RecursionError as e:
             logger.debug('recursion error')
             raise UnparsableError(e)
@@ -43,14 +43,16 @@ class Parser:
     def _filter_excluded(self, nodes):
         return [n for n in nodes if n.hl_group not in self._excluded]
 
-    def _parse(self, code):
+    def _parse(self, code, force):
         """Inner parse function.
 
         Return tuple (add, remove) of added and removed nodes since last run.
         """
         new_lines = code.split('\n')
         new_nodes = self._make_nodes(code, new_lines)
-        if self._minor_change(self._lines, new_lines):
+        # Detecting minor changes keeps us from updating a lot of highlights
+        # while the user is only editing a single line.
+        if not force and self._minor_change(self._lines, new_lines):
             add, rem, keep = self._diff(self._nodes, new_nodes)
             self._nodes = keep + add
         else:

@@ -149,3 +149,9 @@ def test_option_no_default_builtin_highlight():
     vim.command('set syntax=python')
     vim.current.buffer[:] = ['len']
     assert vim.eval(synstack_cmd) == ['pythonBuiltin']
+
+
+def test_cmd_highlight(vim):
+    vim.command('edit /tmp/foo.py')
+    vim.command('Semshi highlight')
+    # TODO Verify that highlights actually have been applied

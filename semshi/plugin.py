@@ -74,11 +74,18 @@ class Plugin:
         if not args:
             self.vim.out_write('This is semshi.\n')
             return
-        cmd = args[0]
-        if cmd == 'version':
-            self.vim.out_write('semshi v0.0\n')
-        else:
-            self.vim.err_write('"%s" is not a recognized command.\n' % args[0])
+        try:
+            func = getattr(self, 'cmd_%s' % args[0])
+        except AttributeError:
+            self.vim.err_write('Sub command not found: %s\n' % args[0])
+            return
+        func(*args[1:])
+
+    def cmd_version(self):
+        self.vim.out_write('semshi v0.0\n')
+
+    def cmd_highlight(self):
+        self._cur_handler.update(force=True, sync=True)
 
     def _switch_handler(self):
         buf = self.vim.current.buffer
@@ -88,7 +95,7 @@ class Plugin:
             handler = BufferHandler(
                 partial(self._add_highlights, buf),
                 partial(self._clear_highlights, buf),
-                partial(self._buffer_lines, buf),
+                partial(self._code, buf),
                 self._cursor,
                 self._options.excluded_hl_groups,
                 self._options.mark_original_node,
@@ -104,11 +111,13 @@ class Plugin:
     def _mark_selected(self):
         self._cur_handler.mark_selected(self.vim.current.window.cursor)
 
-    def _cursor(self):
-        return self._wait_for(lambda: self.vim.current.window.cursor)
+    def _cursor(self, sync):
+        func = lambda: self.vim.current.window.cursor
+        return func() if sync else self._wait_for(func)
 
-    def _buffer_lines(self, buf):
-        return self._wait_for(lambda: buf[:])
+    def _code(self, buf, sync):
+        func = lambda: '\n'.join(buf[:])
+        return func() if sync else self._wait_for(func)
 
     def _wait_for(self, func):
         """Run `func` in async context, block until done and return result.

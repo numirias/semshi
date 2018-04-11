@@ -6,6 +6,12 @@ colorscheme zellner
 
 set noswapfile
 set hidden
+set tabstop=8
+set shiftwidth=4
+set softtabstop=4
+set smarttab
+set expandtab
+set number
 
 let &runtimepath .= ',' . getcwd()
 let $NVIM_RPLUGIN_MANIFEST = './script/rplugin.vim'
