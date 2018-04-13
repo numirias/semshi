@@ -99,7 +99,7 @@ class Visitor:
         # Using __dict__.get() is faster than getattr()
         target = node.__dict__.get('self_target')
         self.nodes.append(Node(node.id, node.lineno, node.col_offset,
-                               self._cur_env, None, target))
+                               self._cur_env, None, target)) # TODO why None?
 
     def _visit_arg(self, node):
         """Visit argument."""

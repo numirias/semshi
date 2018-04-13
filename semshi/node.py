@@ -51,6 +51,7 @@ class Node:
             try:
                 self.symbol = table.lookup(self.symname)
             except KeyError:
+                # TODO Maybe just write log instead of raising exception?
                 raise Exception('%s can\'t lookup "%s"' % (self, self.symname))
         self.hl_group = self._make_hl_group()
         self._tup = (self.lineno, self.col, self.hl_group, self.name)
@@ -68,7 +69,7 @@ class Node:
     def __repr__(self):
         return '<%s %s %s (%s, %s) %d>' % (
             self.name,
-            self.hl_group[6:],
+            self.hl_group[6:], # TODO hl_group isn't always defined
             '.'.join([x.get_name() for x in self.env]),
             self.lineno,
             self.col,

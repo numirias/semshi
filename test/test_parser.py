@@ -33,13 +33,54 @@ def test_no_names():
 
 
 def test_recursion_error():
-    with pytest.raises(parser.UnparsableError):
+    with pytest.raises(UnparsableError):
         parse(' + '.join(1000 * ['a']))
 
 
-def test_syntax_error():
-    with pytest.raises(parser.UnparsableError):
-        parse('foo bar')
+def test_syntax_error_fail():
+    """Syntax error can't be fixed with a single change."""
+    parser = Parser()
+    with pytest.raises(UnparsableError):
+        parser.parse('(\n(')
+    with pytest.raises(UnparsableError):
+        parser.parse(')\n(')
+    # Intentionally no change
+    with pytest.raises(UnparsableError):
+         parser.parse(')\n(')
+
+
+def test_syntax_error_fail2():
+    """Syntax error can't be fixed with a single change."""
+    parser = make_parser('a\nb/')
+    with pytest.raises(UnparsableError):
+        parser.parse('a(\nb/')
+
+
+def test_fixable_syntax_errors():
+    """Test syntax errors where we can tokenize the erroneous line."""
+    names = parse('''
+    a  a = b in
+    c
+    ''')
+    assert [n.pos for n in names] == [(2, 0), (2, 3), (2, 7), (3, 0)]
+
+
+def test_fixable_syntax_errors2():
+    """Test syntax errors where we can tokenize the last modified line."""
+    parser = make_parser('''
+    a
+    b
+    ''')
+    parser.parse(dedent('''
+    c(
+    b
+    '''))
+    assert {n.name for n in parser._nodes} == {'c', 'b'}
+
+
+def test_fixable_syntax_errors_indent():
+    parser = make_parser('''def foo():\n \t \tx-''')
+    assert parser._nodes[-1].pos == (2, 4)
 
 
 def test_name_len():
@@ -529,6 +570,11 @@ def test_same_nodes_exclude_current():
     assert set(parser.same_nodes(a0, mark_original=False)) == {a1, a2}
 
 
+def test_same_nodes_empty():
+    parser = make_parser('0, 1')
+    assert parser.same_nodes((1, 0)) == []
+
+
 @pytest.mark.xfail
 def test_refresh_names():
     """Add and clear exact names."""
@@ -681,6 +727,12 @@ def test_exclude_types_same_nodes():
     assert [n.pos for n in parser.same_nodes((1, 0))] == [(1, 0), (1, 3)]
 
 
+def test_make_nodes():
+    """parser._make_nodes should work without a `lines` argument."""
+    parser = Parser()
+    parser._make_nodes('x')
+
+
 class TestNode:
 
     def test_node(self):
@@ -724,10 +776,10 @@ class TestDiffs:
     def test_minor_change(self):
         def minor_change(c1, c2):
             return Parser._minor_change(c1, c2)
-        assert minor_change(list('abc'), list('axc'))
-        assert not minor_change(list('abc'), list('xbx'))
-        assert not minor_change(list('abc'), list('abcedf'))
-        assert minor_change(list('abc'), list('abc'))
+        assert minor_change(list('abc'), list('axc')) == 1
+        assert minor_change(list('abc'), list('xbx')) == -1
+        assert minor_change(list('abc'), list('abcedf')) == -1
+        assert minor_change(list('abc'), list('abc')) is None
 
     def test_diff(self):
         """The id of a saved name should remain the same so that we can remove
@@ -735,12 +787,8 @@ class TestDiffs:
         # TODO remove prints
         parser = Parser()
         add0, rem = parser.parse('foo')
-        print(add0, rem)
         add, rem = parser.parse('foo ')
-        print(add, rem)
-        print('active', parser._nodes)
         add, rem = parser.parse('foo = 1')
-        print(add, rem)
         assert add0[0].id == rem[0].id
 
 

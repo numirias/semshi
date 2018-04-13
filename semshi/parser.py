@@ -1,9 +1,12 @@
 import ast
 from collections import Iterable
 from functools import singledispatch
+from keyword import kwlist
 import symtable
+from token import NAME, INDENT
+from tokenize import TokenError, tokenize
 
-from .util import logger, debug_time
+from .util import debug_time, logger
 from .visitor import visitor
 
 
@@ -49,29 +52,99 @@ class Parser:
         Return tuple (add, remove) of added and removed nodes since last run.
         """
         new_lines = code.split('\n')
-        new_nodes = self._make_nodes(code, new_lines)
+        old_lines = self._lines
+        # TODO Is it okay to change self._lines even if there is a syntax
+        # error? Or move it back down?
+        self._lines = new_lines
+        change_lineno = self._minor_change(old_lines, new_lines)
+        new_nodes = self._make_nodes(code, new_lines, change_lineno)
         # Detecting minor changes keeps us from updating a lot of highlights
         # while the user is only editing a single line.
-        if not force and self._minor_change(self._lines, new_lines):
+        if not force and (change_lineno != -1):
             add, rem, keep = self._diff(self._nodes, new_nodes)
             self._nodes = keep + add
         else:
             add, rem = new_nodes, self._nodes
             self._nodes = add
-        self._lines = new_lines
+        # self._lines = new_lines
         logger.debug('nodes: +%d,  -%d', len(add), len(rem))
         return (self._filter_excluded(add), self._filter_excluded(rem))
 
-    def _make_nodes(self, code, lines=None):
+    def _make_nodes(self, code, lines=None, change_lineno=None):
         """Return nodes in code.
 
-        Runs AST visitor on code and produces nodes.
+        Runs AST visitor on code and produces nodes. We're passing both code
+        *and* lines around so we don't need to convert a lot.
         """
         if lines is None:
             lines = code.split('\n')
-        ast_root = self._make_ast(code)
+        ast_root, fixed_code, fixed_lines = self._fix_errors(code, lines,
+                                                             change_lineno)
+        if fixed_code is not None:
+            code = fixed_code
+            lines = fixed_lines
         symtable_root = self._make_symtable(code)
         return visitor(lines, symtable_root, ast_root)
+
+    def _fix_errors(self, code, lines, change_lineno):
+        # TODO Cache previous attempt?
+        lines = lines[:] # TODO Do we need a copy?
+        try:
+            return self._make_ast(code), None, None
+        except SyntaxError as e:
+            orig_error = e
+            error_idx = e.lineno - 1
+        orig_line = lines[error_idx]
+        lines[error_idx] = self._fix_line(orig_line)
+        code = '\n'.join(lines)
+        try:
+            return self._make_ast(code), code, lines
+        except SyntaxError:
+            pass
+        # Restore original line
+        lines[error_idx] = orig_line
+        # Replacing the line of the syntax error failed. Now try again with the
+        # line of last change.
+        if change_lineno is None:
+            # No change occurred, so can't check changed line.
+            raise orig_error
+        if change_lineno == -1:
+            # More than one line changed, so can't identify single change.
+            raise orig_error
+        if change_lineno == error_idx:
+            # DOn't check a line we already used.
+            raise orig_error
+        lines[change_lineno] = self._fix_line(lines[change_lineno])
+        code = '\n'.join(lines)
+        try:
+            return self._make_ast(code), code, lines
+        except SyntaxError:
+            raise orig_error
+
+    def _fix_line(self, line):
+        indent, names = self._tokenize(line)
+        fixed = indent
+        for token in names:
+            fixed += (token.start[1] - len(fixed)) * '+' + token.string
+        return fixed
+
+    @staticmethod
+    def _tokenize(line):
+        tokens = tokenize(iter([line.encode('utf-8')]).__next__)
+        indent = ''
+        names = []
+        try:
+            for token in tokens:
+                if token.type == INDENT:
+                    indent = token.string
+                if token.type != NAME:
+                    continue
+                if token.string in kwlist:
+                    continue
+                names.append(token)
+        except TokenError as e:
+            logger.debug('token error %s', e)
+        return indent, names
 
     @staticmethod
     @debug_time
@@ -92,21 +165,25 @@ class Parser:
         A minor change is a change in a single line while the total number of
         lines remains constant.
         """
+        # TODO Bad design: Currently returns lineno for single change, -1 for
+        # multiple changes, None for no change.
         if len(old) != len(new):
-            return False
+            return -1
         old_iter = iter(old)
         new_iter = iter(new)
-        diffs = 0
+        diff_lineno = None
+        lineno = 0
         try:
             while True:
                 old = next(old_iter)
                 new = next(new_iter)
                 if old != new:
-                    diffs += 1
-                    if diffs > 1:
-                        return False
+                    if diff_lineno is not None:
+                        return -1
+                    diff_lineno = lineno
+                lineno += 1
         except StopIteration:
-            return True
+            return diff_lineno
 
     @staticmethod
     @debug_time
@@ -170,12 +247,7 @@ class Parser:
             cur_node = target
         cur_name = cur_node.name
         base_table = cur_node.base_table()
-        ref = getattr(cur_node, 'ref', None)
         for node in self._nodes:
-            if ref is not None:
-                if ref == getattr(node, 'ref', None):
-                    yield node
-                continue
             if node.name != cur_name:
                 continue
             if not mark_original and node is cur_node:
