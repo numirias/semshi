@@ -1,7 +1,7 @@
 import os
 from textwrap import dedent
 import pytest
-from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAM, BUILTIN, GLOBAL, LOCAL, IMPORTED
+from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAMETER, BUILTIN, GLOBAL, LOCAL, IMPORTED
 from semshi.parser import Parser, UnparsableError
 from semshi import parser
 
@@ -261,7 +261,7 @@ def test_self_param():
     """)
     groups = [n.hl_group for n in names if n.name in ['self', 'cls']]
     assert groups == [
-        UNRESOLVED, PARAM, SELF, FREE, PARAM, PARAM, PARAM, PARAM, SELF
+        UNRESOLVED, PARAMETER, SELF, FREE, PARAMETER, PARAMETER, PARAMETER, PARAMETER, SELF
     ]
 
 

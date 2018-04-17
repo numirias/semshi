@@ -4,23 +4,21 @@ from itertools import count
 
 groups = {}
 
-
-def group(s): # TODO Make enum? (Fast enough?)
+def group(s):
     label = 'semshi%s' % s.title()
     groups[s] = label
     return label
 
-
 UNRESOLVED = group('unresolved')
-ATTR = group('attribute')
+ATTRIBUTE = group('attribute')
 BUILTIN = group('builtin')
 FREE = group('free')
 GLOBAL = group('global')
-PARAM = group('parameter')
+PARAMETER = group('parameter')
 SELF = group('self')
 IMPORTED = group('imported')
 LOCAL = group('local')
-MARKED = group('selected')
+SELECTED = group('selected')
 
 more_builtins = {'__file__', '__path__', '__cached__'}
 builtins = set(vars(builtins)) | more_builtins
@@ -39,7 +37,7 @@ class Node:
         self.name = name
         self.lineno = lineno
         self.col = col
-        self.end = self.col + len(bytes(self.name, 'utf-8')) # TODO a bit slow
+        self.end = self.col + len(self.name.encode('utf-8')) # TODO a bit slow
         self.env = env
         self.is_attr = is_attr
         self.symname = self._make_symname(name)
@@ -78,7 +76,7 @@ class Node:
 
     def _make_hl_group(self):
         if self.is_attr:
-            return ATTR
+            return ATTRIBUTE
         sym = self.symbol
         name = self.name
         if sym.is_parameter():
@@ -89,7 +87,7 @@ class Node:
             else:
                 if self_param == name:
                     return SELF
-            return PARAM
+            return PARAMETER
         if sym.is_free(): # TODO
             return FREE
         if sym.is_imported():

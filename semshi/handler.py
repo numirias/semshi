@@ -2,7 +2,7 @@ import threading
 
 from .parser import Parser, UnparsableError
 from .util import logger, debug_time
-from .node import Node, MARKED
+from .node import Node, SELECTED
 
 
 class BufferHandler:
@@ -147,5 +147,5 @@ def nodes_to_hl(nodes, clear=False, marked=False):
         return [(n.id, 0, -1) for n in nodes]
     if marked:
         id = Node.MARK_ID
-        return [(id, MARKED, n.lineno - 1, n.col, n.end) for n in nodes]
+        return [(id, SELECTED, n.lineno - 1, n.col, n.end) for n in nodes]
     return [(n.id, n.hl_group, n.lineno - 1, n.col, n.end) for n in nodes]
