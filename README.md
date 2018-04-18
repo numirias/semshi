@@ -13,6 +13,7 @@ Most syntax highlighters are regex-based and unaware of semantics. Semshi perfor
 | ![After](https://i.imgur.com/QUnGdU8.png) | ![Before](https://i.imgur.com/eiD1Miz.png) |
 
 In above example, Semshi helps you to distinguish arguments (blue), globals (orange), instance attributes (teal), etc. Unlike the default highlighter, it detects that the name `list` is assigned and therefore local to its scope and not a builtin anymore. Also, unresolved names (yellow underlined) easier to spot.
+# TODO
 
 ## Features
 
@@ -84,9 +85,9 @@ autocmd FileType python call MyCustomHighlights()
 
 ## Usage
 
-Once installed, Semshi automatically parses and highlights code in any open file with a `.py` extension. With every change to the buffer, the code is re-parsed and highlights are updated. When moving the cursor above a name, all nodes with the same name in the same scope are highlighted, too.
+Once installed, Semshi automatically parses and highlights code in any open file with a `.py` extension. With every change to the buffer, the code is re-parsed and highlights are updated. When moving the cursor above a name, all nodes with the same name in the same scope are highlighted, too. Semshi also attempts to compensate syntax errors as you type.
 
-But bear in mind that static analysis is limited. For example, wildcard imports (`from foo import *`) and `eval` or `exec` calls can hide symbols which Semshi won't pick up and show them as unresolved. Also, while the syntax is incorrect, highlights can't be updated.
+But bear in mind that static analysis is limited. For example, wildcard imports (`from foo import *`) and `eval` or `exec` calls can hide names which Semshi won't pick up or show as unresolved. Also, whenever a syntax error is present (which can't be automatically compensated), highlights can't be updated.
 
 
 ### Commands
