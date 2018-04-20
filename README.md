@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/numirias/semshi/branch/master/graph/badge.svg)](https://codecov.io/gh/numirias/semshi)
 ![Python Versions](https://img.shields.io/badge/python-3.5,%203.6-blue.svg)
 
-Semshi provides semantic syntax highlighting for Python in Neovim.
+Semshi provides semantic highlighting for Python in Neovim.
 
 Most syntax highlighters are regex-based and unaware of semantics. Semshi performs static analysis of Python code as you type. It asynchronously builds a syntax tree and symbol table to understand the scope of locals, globals, arguments etc. and highlight them differently. This makes code easier to read and lets you quickly detect missing imports or misspelled names.
 
@@ -12,8 +12,7 @@ Most syntax highlighters are regex-based and unaware of semantics. Semshi perfor
 | --- | --- |
 | ![After](https://i.imgur.com/QUnGdU8.png) | ![Before](https://i.imgur.com/eiD1Miz.png) |
 
-In above example, Semshi helps you to distinguish arguments (blue), globals (orange), instance attributes (teal), etc. Unlike the default highlighter, it detects that the name `list` is assigned and therefore local to its scope and not a builtin anymore. Also, unresolved names (yellow underlined) easier to spot.
-# TODO
+In above example, Semshi helps you to distinguish arguments (blue), globals (orange), instance attributes (teal), etc. Unlike the default highlighter, it detects that the name `list` is assigned and therefore local to its scope and not a builtin anymore. Also, unresolved names (yellow underlined) are easier to spot.
 
 ## Features
 
@@ -74,7 +73,7 @@ hi semshiSelf       ctermfg=249 guifg=#b2b2b2
 hi semshiUnresolved ctermfg=226 guifg=#ffff00 cterm=underline gui=underline
 hi semshiSelected   ctermfg=231 guifg=#ffffff ctermbg=161 guibg=#d7005f
 ```
-If you want to overwrite them in your vimrc, make sure to put them in a function, e.g.:
+If you want to overwrite them in your vimrc, make sure to put them in a function to apply them *after* Semshi has set the default values, e.g.:
 
 ```VimL
 function MyCustomHighlights()
