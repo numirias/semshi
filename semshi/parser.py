@@ -3,7 +3,7 @@ from collections import Iterable
 from functools import singledispatch
 from keyword import kwlist
 import symtable
-from token import NAME, INDENT
+from token import NAME, INDENT, OP
 from tokenize import TokenError, tokenize
 
 from .util import debug_time, logger
@@ -121,30 +121,36 @@ class Parser:
         except SyntaxError:
             raise orig_error
 
-    def _fix_line(self, line):
-        indent, names = self._tokenize(line)
-        fixed = indent
-        for token in names:
-            fixed += (token.start[1] - len(fixed)) * '+' + token.string
-        return fixed
-
     @staticmethod
-    def _tokenize(line):
+    def _fix_line(line):
+        """Take a line of code which may have introduced a syntax error and
+        return a modified version which is less likely to cause a syntax error.
+        """
         tokens = tokenize(iter([line.encode('utf-8')]).__next__)
-        indent = ''
-        names = []
+        prev = None
+        text = ''
+        def add_token(token, filler):
+            nonlocal text, prev
+            text += (token.start[1] - len(text)) * filler + token.string
+            prev = token
         try:
             for token in tokens:
                 if token.type == INDENT:
-                    indent = token.string
-                if token.type != NAME:
-                    continue
-                if token.string in kwlist:
-                    continue
-                names.append(token)
+                    text += token.string
+                elif (token.type == OP and token.string == '.' and prev and
+                      prev.type == NAME):
+                    add_token(token, ' ')
+                elif token.type == NAME and token.string not in kwlist:
+                    if prev and prev.type == OP and prev.string == '.':
+                        add_token(token, ' ')
+                    else:
+                        add_token(token, '+')
         except TokenError as e:
             logger.debug('token error %s', e)
-        return indent, names
+        if prev and prev.type == OP and prev.string == '.':
+            # Cut superfluous dot from the end of line
+            text = text[:-1]
+        return text
 
     @staticmethod
     @debug_time

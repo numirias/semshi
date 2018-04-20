@@ -83,6 +83,27 @@ def test_fixable_syntax_errors_indent():
     assert parser._nodes[-1].pos == (2, 4)
 
 
+def test_fixable_syntax_errors_misc():
+    fix = Parser._fix_line
+    assert fix('') == ''
+    assert fix('(') == ''
+    assert fix(' (x') == ' +x'
+    assert fix(' .x') == ' +x'
+    # The trailing whitespace shouldn't be there, but doesn't do any harm
+    assert fix(' a .. ') == ' a '
+
+
+def test_fixable_syntax_errors_attributes():
+    fix = Parser._fix_line
+    assert fix('foo bar . . baz') == \
+               'foo+bar .   baz'
+    assert fix('(foo.bar . baz  qux ( . baar') == \
+               '+foo.bar . baz++qux   . baar'
+    # Doesn't matter that we don't preserve tabs because we only want offsets
+    assert fix('def foo.bar( + 1\t. 0 ... .1 spam . ham \t .eggs..') == \
+               '++++foo.bar      .          spam . ham   .eggs'
+
+
 def test_name_len():
     """Name length needs to be byte length for the correct HL offset."""
     names = parse('asd + äöü')
