@@ -97,8 +97,12 @@ class Plugin:
                 partial(self._clear_highlights, buf),
                 partial(self._code, buf),
                 self._cursor,
+                partial(self._place_sign, buf.number),
+                partial(self._unplace_sign, buf.number),
                 self._options.excluded_hl_groups,
                 self._options.mark_selected_nodes,
+                self._options.error_sign,
+                self._options.error_sign_delay,
             )
             self._handlers[buf] = handler
         self._cur_handler = handler
@@ -165,6 +169,14 @@ class Plugin:
         for i in range(0, len(calls), batch_size):
             self.vim.api.call_atomic(calls[i:i + batch_size], async=True)
 
+    def _place_sign(self, buffer_num, id, line, name):
+        self.vim.command('sign place %d line=%d name=%s buffer=%d' %
+                         (id, line, name, buffer_num), async=True)
+
+    def _unplace_sign(self, buffer_num, id):
+        self.vim.command('sign unplace %d buffer=%d' %
+                         (id, buffer_num), async=True)
+
 
 class Options:
     """Plugin options.
@@ -193,3 +205,9 @@ class Options:
 
     def _option_mark_selected_nodes(self):
         return self._option('mark_selected_nodes')
+
+    def _option_error_sign(self):
+        return bool(self._option('error_sign'))
+
+    def _option_error_sign_delay(self):
+        return self._option('error_sign_delay')

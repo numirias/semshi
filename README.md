@@ -12,18 +12,17 @@ Most syntax highlighters are regex-based and unaware of semantics. Semshi perfor
 | --- | --- |
 | ![After](https://i.imgur.com/QUnGdU8.png) | ![Before](https://i.imgur.com/eiD1Miz.png) |
 
-In above example, Semshi helps you to distinguish arguments (blue), globals (orange), instance attributes (teal), etc. Unlike the default highlighter, it detects that the name `list` is assigned and therefore local to its scope and not a builtin anymore. Also, unresolved names (yellow underlined) are easier to spot.
+In above example, you can quickly distinguish arguments (blue), globals (orange), instance attributes (teal), etc. Unlike the default highlighter, Semshi detects that the name `list` has been re-assigned and is therefore not a builtin anymore. Also, unresolved names (yellow underlined) are easier to spot.
 
 ## Features
 
-- Different highlighting of locals, globals, function parameters, builtins, attributes, arguments, free and unresolved names.
+- Different highlighting of locals, globals, imports, function parameters, builtins, attributes, arguments, free and unresolved names.
 - Highlighting of all currently selected nodes.
+- Indication of syntax errors.
 
-To be done:
+**TODO:**
 
-- Highlighting of syntax errors.
-- Highlighting of iteration variables.
-- Indication of unused arguments.
+- Highlighting of unused arguments.
 - Refactoring tools.
 
 ## Installation
@@ -56,6 +55,8 @@ You can set these options in your vimrc (`~/.config/nvim/init.vim`):
 | `g:semshi#mark_selected_nodes ` | ` 1` | Mark selected nodes (those with the same name and scope as the one under the cursor). Set to `2` to highlight the node currently under the cursor, too. |
 | `g:semshi#no_default_builtin_highlight` | `1` | Disable builtin highlighting by Vim's own Python syntax highlighter, because that's Semshi's job. If you turn it off, Vim will add incorrect highlights. |
 | `g:semshi#simplify_markup` | `1` | Simplify Python markup. Semshi introduces lots of new colors, so this option makes the highlighting of other syntax elements less distracting, binding most of them to `pythonStatement`. If you think Semshi messes with your colorscheme too much, try turning this off. |
+| `g:semshi#error_sign` | `1` | Show a sign in the sign column if a syntax error occurred. |
+| `g:semshi#error_sign_delay` | `1.5` | Delay in seconds until a syntax error sign is displayed. (A low delay time may distract while typing.) |
 
 ### Highlights
 
@@ -72,8 +73,11 @@ hi semshiAttribute  ctermfg=49  guifg=#00ffaf
 hi semshiSelf       ctermfg=249 guifg=#b2b2b2
 hi semshiUnresolved ctermfg=226 guifg=#ffff00 cterm=underline gui=underline
 hi semshiSelected   ctermfg=231 guifg=#ffffff ctermbg=161 guibg=#d7005f
+
+hi semshiErrorSign  ctermfg=231 guifg=#ffffff ctermbg=160 guibg=#d70000
+sign define semshiError text=E> texthl=semshiErrorSign
 ```
-If you want to overwrite them in your vimrc, make sure to put them in a function to apply them *after* Semshi has set the default values, e.g.:
+If you want to overwrite them in your vimrc, make sure to apply them *after* Semshi has set the defaults, e.g. in a function:
 
 ```VimL
 function MyCustomHighlights()
@@ -105,13 +109,17 @@ The following commands can be executed via `:Semshi <command>`:
 
 No. Semshi relies on Neovim's fast highlighting API to update highlights quickly for which there is currently no equivalent in regular Vim. If you think this can be implemented for Vim 8, let me know.
 
+### Is Python 2 supported?
+
+No. Currently, support for Python < 3.5 isn't planned. Migrate your code already!
+
 ### There are some annoying extra highlights.
 
 You might be using other Python syntax highlighters alongside (such as [python-syntax](https://github.com/vim-python/python-syntax)) which may interfere with Semshi. Try to disable these plugins if they cause problems.
 
 ### Sometimes highlights aren't updated.
 
-As you type code, you introduce temporary syntax errors, e.g. when opening a new bracket. Not all syntax errors can be compensated, so Semshi can only refresh highlights when the syntax becomes correct again.
+As you type code, you introduce temporary syntax errors, e.g. when opening a new bracket. Not all syntax errors can be compensated, so most of the time Semshi can only refresh highlights when the syntax becomes correct again.
 
 ## Contributing
 

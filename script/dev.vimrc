@@ -34,3 +34,5 @@ nnoremap <leader>v :call SynStack()<CR>
 
 let $SEMSHI_LOG_FILE = '/tmp/semshi.log'
 let $SEMSHI_LOG_LEVEL = 'DEBUG'
+
+let g:semshi#error_sign_delay = 0.5

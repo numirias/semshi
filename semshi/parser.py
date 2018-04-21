@@ -23,6 +23,11 @@ class Parser:
         self._excluded = exclude or []
         self._lines = []
         self._nodes = []
+        # Holds the SyntaxError exception of the current run
+        self.syntax_error = None
+        # Holds the error of the previous run, so the buffer handler knows if
+        # error signs need to be updated
+        self.prev_syntax_error = None
         self.same_nodes = singledispatch(self.same_nodes)
         self.same_nodes.register(Iterable, self._same_nodes_cursor)
 
@@ -74,7 +79,7 @@ class Parser:
         """Return nodes in code.
 
         Runs AST visitor on code and produces nodes. We're passing both code
-        *and* lines around so we don't need to convert a lot.
+        *and* lines around to avoid lots of conversions.
         """
         if lines is None:
             lines = code.split('\n')
@@ -87,13 +92,26 @@ class Parser:
         return visitor(lines, symtable_root, ast_root)
 
     def _fix_errors(self, code, lines, change_lineno):
+        """Try to fix syntax errors in code (if present) and return AST, fixed
+        code and list of fixed lines of code.
+
+        The current strategy to fix syntax errors is to call _fix_line() on the
+        line where the syntax error occurred and, if that failed, on the line
+        of the last change.
+
+        The original SyntaxError is raised if all fixing attempts failed.
+        """
+        # TODO Refactor
         # TODO Cache previous attempt?
-        lines = lines[:] # TODO Do we need a copy?
+        self.prev_syntax_error = self.syntax_error
         try:
+            self.syntax_error = None
             return self._make_ast(code), None, None
         except SyntaxError as e:
             orig_error = e
             error_idx = e.lineno - 1
+        self.syntax_error = orig_error
+        lines = lines[:] # TODO Do we need a copy?
         orig_line = lines[error_idx]
         lines[error_idx] = self._fix_line(orig_line)
         code = '\n'.join(lines)

@@ -9,9 +9,8 @@ hi semshiSelf       ctermfg=249 guifg=#b2b2b2
 hi semshiUnresolved ctermfg=226 guifg=#ffff00 cterm=underline gui=underline
 hi semshiSelected   ctermfg=231 guifg=#ffffff ctermbg=161 guibg=#d7005f
 
-
-hi semshiError ctermfg=white ctermbg=160
-sign define semshiError text=E> texthl=semshiError
+hi semshiErrorSign  ctermfg=231 guifg=#ffffff ctermbg=160 guibg=#d70000
+sign define semshiError text=E> texthl=semshiErrorSign
 
 
 if !exists('g:semshi#active')
@@ -34,6 +33,14 @@ if !exists('g:semshi#mark_selected_nodes')
     let g:semshi#mark_selected_nodes = 1
 endif
 
+if !exists('g:semshi#error_sign')
+    let g:semshi#error_sign = 1
+endif
+
+if !exists('g:semshi#error_sign_delay')
+    let g:semshi#error_sign_delay = 1.5
+endif
+
 function! s:remove_builtin_extra()
     syn keyword pythonKeyword True False None
     hi link pythonKeyword pythonNumber
@@ -48,7 +55,7 @@ if g:semshi#no_default_builtin_highlight
     hi link pythonAttribute NONE
     hi link pythonDecoratorName NONE
 
-    "For python-syntax
+    "For python-syntax plugin
     let g:python_highlight_class_vars = 0
     let g:python_highlight_builtins = 0
     let g:python_highlight_exceptions = 0
@@ -65,7 +72,7 @@ function! s:simplify_markup()
     hi link pythonConditional pythonStatement
     hi link pythonRepeat pythonStatement
 
-    "For python-syntax
+    "For python-syntax plugin
     let g:python_highlight_operators = 0
 endfunction
 

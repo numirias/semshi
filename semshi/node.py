@@ -37,7 +37,8 @@ class Node:
         self.name = name
         self.lineno = lineno
         self.col = col
-        self.end = self.col + len(self.name.encode('utf-8')) # TODO a bit slow
+        # We need the byte length  (TODO is there a faster way?)
+        self.end = self.col + len(self.name.encode('utf-8'))
         self.env = env
         self.is_attr = is_attr
         self.symname = self._make_symname(name)
