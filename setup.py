@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='semshi',
-    description='Semantic Syntax Highlighting for Python',
+    description='Semantic Highlighting for Python',
     packages=['semshi'],
     author='numirias',
     author_email='numirias@users.noreply.github.com',

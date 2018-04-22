@@ -5,7 +5,7 @@ from itertools import count
 groups = {}
 
 def group(s):
-    label = 'semshi%s' % s.title()
+    label = 'semshi' + s[0].capitalize() + s[1:]
     groups[s] = label
     return label
 
@@ -15,6 +15,7 @@ BUILTIN = group('builtin')
 FREE = group('free')
 GLOBAL = group('global')
 PARAMETER = group('parameter')
+PARAMETER_UNUSED = group('parameterUnused')
 SELF = group('self')
 IMPORTED = group('imported')
 LOCAL = group('local')
@@ -25,7 +26,9 @@ builtins = set(vars(builtins)) | more_builtins
 
 
 class Node:
+    """A node in the source code.
 
+    """
     MARK_ID = 31400
     id_counter = count(314001)
 
@@ -53,6 +56,10 @@ class Node:
                 # TODO Maybe just write log instead of raising exception?
                 raise Exception('%s can\'t lookup "%s"' % (self, self.symname))
         self.hl_group = self._make_hl_group()
+        self.update_tup()
+
+    def update_tup(self):
+        """Update EQ tuple."""
         self._tup = (self.lineno, self.col, self.hl_group, self.name)
 
     def __lt__(self, other):
@@ -81,8 +88,11 @@ class Node:
         sym = self.symbol
         name = self.name
         if sym.is_parameter():
+            table = self.env[-1]
+            # We have seen the node, so remove from unused parameters
+            table.unused_params.pop(self.name, None)
             try:
-                self_param = self.env[-1].self_param
+                self_param = table.self_param
             except AttributeError:
                 pass
             else:

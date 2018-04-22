@@ -1,7 +1,7 @@
 import os
 from textwrap import dedent
 import pytest
-from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAMETER, BUILTIN, GLOBAL, LOCAL, IMPORTED
+from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAMETER, PARAMETER_UNUSED, BUILTIN, GLOBAL, LOCAL, IMPORTED
 from semshi.parser import Parser, UnparsableError
 from semshi import parser
 
@@ -281,8 +281,9 @@ def test_self_param():
             pass
     """)
     groups = [n.hl_group for n in names if n.name in ['self', 'cls']]
-    assert groups == [
-        UNRESOLVED, PARAMETER, SELF, FREE, PARAMETER, PARAMETER, PARAMETER, PARAMETER, SELF
+    assert [PARAMETER if g is PARAMETER_UNUSED else g for g in groups] == [
+        UNRESOLVED, PARAMETER, SELF, FREE, PARAMETER, PARAMETER, PARAMETER,
+        PARAMETER, SELF
     ]
 
 
@@ -752,6 +753,18 @@ def test_make_nodes():
     """parser._make_nodes should work without a `lines` argument."""
     parser = Parser()
     parser._make_nodes('x')
+
+
+def test_unused_args():
+    names = parse('''
+    def foo(a, b, c, d=1): a, c
+    lambda x: 1
+    async def bar(y): pass
+    ''')
+    assert [n.hl_group for n in names] == [
+        LOCAL, PARAMETER, PARAMETER_UNUSED, PARAMETER, PARAMETER_UNUSED,
+        PARAMETER, PARAMETER, PARAMETER_UNUSED, LOCAL, PARAMETER_UNUSED
+    ]
 
 
 class TestNode:

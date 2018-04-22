@@ -7,13 +7,16 @@ from itertools import count
 from token import NAME, OP
 from tokenize import tokenize
 
-from .node import Node
+from .node import Node, PARAMETER_UNUSED, SELF
 from .util import debug_time
 
 
 # Node types which introduce a new scope
 BLOCKS = (Module, FunctionDef, AsyncFunctionDef, ClassDef, ListComp, DictComp,
           SetComp, GeneratorExp, Lambda)
+FUNCTION_BLOCKS = (FunctionDef, Lambda, AsyncFunctionDef)
+# Node types which don't require any action
+SKIP = (NameConstant, Str, Num, Store, Load, Eq, Lt, Gt, NotEq, LtE, GtE)
 
 
 def tokenize_lines(lines):
@@ -68,8 +71,7 @@ class Visitor:
             self._add_attribute(node)
             self.visit(node.value)
             return
-        elif type_ in (NameConstant, Str, Num, Store, Load, Eq, Lt, Gt, NotEq,
-                       LtE, GtE):
+        elif type_ in SKIP:
             return
         elif type_ is Try:
             self._visit_try(node)
@@ -77,7 +79,7 @@ class Visitor:
             self._visit_import(node)
         elif type_ is arg:
             self._visit_arg(node)
-        elif type_ in (FunctionDef, Lambda, AsyncFunctionDef):
+        elif type_ in FUNCTION_BLOCKS:
             self._visit_arg_defaults(node)
         elif type_ in (ListComp, SetComp, DictComp, GeneratorExp):
             self._visit_comp(node)
@@ -90,8 +92,26 @@ class Visitor:
                 self._mark_self(node)
         # Either make a new block scope...
         if type_ in BLOCKS:
-            self._visit_block(node)
-        # ...or just iterate through node attributes
+            current_table = self._table_stack.pop()
+            self._table_stack += reversed(current_table.get_children())
+            self._env.append(current_table)
+            self._cur_env = self._env[:]
+            if type_ in FUNCTION_BLOCKS:
+                current_table.unused_params = {}
+                self._iter_node(node)
+                # Set the hl group of all parameters that didn't appear in the
+                # function body to "unused parameter".
+                for param in current_table.unused_params.values():
+                    if param.hl_group == SELF:
+                        # SELF args should never be shown as unused
+                        continue
+                    param.hl_group = PARAMETER_UNUSED
+                    param.update_tup()
+            else:
+                self._iter_node(node)
+            self._env.pop()
+            self._cur_env = self._env[:]
+        # ...or just iterate through the node's attributes.
         else:
             self._iter_node(node)
 
@@ -103,8 +123,11 @@ class Visitor:
 
     def _visit_arg(self, node):
         """Visit argument."""
-        self.nodes.append(Node(node.arg, node.lineno, node.col_offset,
-                               self._cur_env))
+        node = Node(node.arg, node.lineno, node.col_offset, self._cur_env)
+        self.nodes.append(node)
+        # Register as unused parameter for now. The entry is removed if it's
+        # found to be used later.
+        self._env[-1].unused_params[node.name] = node
 
     def _visit_arg_defaults(self, node):
         """Visit argument default values."""
@@ -112,16 +135,6 @@ class Visitor:
             self.visit(arg_)
         del node.args.defaults
         del node.args.kw_defaults
-
-    def _visit_block(self, node):
-        """Visit block and create new scope."""
-        current_table = self._table_stack.pop()
-        self._table_stack += reversed(current_table.get_children())
-        self._env.append(current_table)
-        self._cur_env = self._env[:]
-        self._iter_node(node)
-        self._env.pop()
-        self._cur_env = self._env[:]
 
     def _visit_try(self, node):
         """Visit try-except."""
