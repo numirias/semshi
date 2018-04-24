@@ -50,7 +50,7 @@ You can set these options in your vimrc (`~/.config/nvim/init.vim`):
 | Option | Default | Description |
 | --- | --- | --- |
 | `g:semshi#active` | `1` | Activate event handlers. |
-| `g:semshi#excluded_hl_groups` | `['local']` | List of highlight groups to not highlight. Chose from `unresolved`, `attribute`, `builtin`, `free`, `global`, `parameter`, `parameterUnused`, `self`, `imported`, `local`, `selected`. (It's recommended to keep `local` in the list because highlighting all locals in a large file can cause performance issues.) |
+| `g:semshi#excluded_hl_groups` | `['local']` | List of highlight groups to not highlight. Chose from `local`, `unresolved`, `attribute`, `builtin`, `free`, `global`, `parameter`, `parameterUnused`, `self`, `imported`. (It's recommended to keep `local` in the list because highlighting all locals in a large file can cause performance issues.) |
 | `g:semshi#mark_selected_nodes ` | ` 1` | Mark selected nodes (those with the same name and scope as the one under the cursor). Set to `2` to highlight the node currently under the cursor, too. |
 | `g:semshi#no_default_builtin_highlight` | `1` | Disable builtin highlighting by Vim's own Python syntax highlighter, because that's Semshi's job. If you turn it off, Vim will add incorrect highlights. |
 | `g:semshi#simplify_markup` | `1` | Simplify Python markup. Semshi introduces lots of new colors, so this option makes the highlighting of other syntax elements less distracting, binding most of them to `pythonStatement`. If you think Semshi messes with your colorscheme too much, try turning this off. |

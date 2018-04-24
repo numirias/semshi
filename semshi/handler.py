@@ -169,8 +169,6 @@ class BufferHandler:
         error = self._parser.syntax_error
         if error is None:
             return
-        logger.debug('got error %s', error)
-        logger.debug(error.offset)
         self._place_sign(314000, error.lineno, 'semshiError')
 
 

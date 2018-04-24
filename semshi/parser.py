@@ -56,12 +56,10 @@ class Parser:
 
         Return tuple (add, remove) of added and removed nodes since last run.
         """
-        new_lines = code.split('\n')
         old_lines = self._lines
-        # TODO Is it okay to change self._lines even if there is a syntax
-        # error? Or move it back down?
-        self._lines = new_lines
+        new_lines = code.split('\n')
         change_lineno = self._minor_change(old_lines, new_lines)
+        # TODO Make exception handling clearer
         new_nodes = self._make_nodes(code, new_lines, change_lineno)
         # Detecting minor changes keeps us from updating a lot of highlights
         # while the user is only editing a single line.
@@ -71,7 +69,8 @@ class Parser:
         else:
             add, rem = new_nodes, self._nodes
             self._nodes = add
-        # self._lines = new_lines
+        # Only assign new lines when nodes have been updates accordingly
+        self._lines = new_lines
         logger.debug('nodes: +%d,  -%d', len(add), len(rem))
         return (self._filter_excluded(add), self._filter_excluded(rem))
 
