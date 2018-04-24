@@ -95,11 +95,12 @@ class Parser:
         """Try to fix syntax errors in code (if present) and return AST, fixed
         code and list of fixed lines of code.
 
-        The current strategy to fix syntax errors is to call _fix_line() on the
-        line where the syntax error occurred and, if that failed, on the line
-        of the last change.
-
-        The original SyntaxError is raised if all fixing attempts failed.
+        Current strategy to fix syntax errors:
+        - Try to build AST from original code.
+        - If that fails, call _fix_line() on the line indicated by the
+          SyntaxError exception and try to build AST again.
+        - If that fails, do the same with the line of the last change.
+        - If all attempts failed, raise original SyntaxError exception.
         """
         # TODO Refactor
         # TODO Cache previous attempt?

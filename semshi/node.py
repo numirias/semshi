@@ -99,7 +99,11 @@ class Node:
                 if self_param == name:
                     return SELF
             return PARAMETER
-        if sym.is_free(): # TODO
+        if sym.is_free():
+            table = self._ref_function_table()
+            if table is not None:
+                table.unused_params.pop(self.name, None)
+                # TODO Should we return PARAMETER / try to resolve frees?
             return FREE
         if sym.is_imported():
             return IMPORTED
@@ -134,6 +138,16 @@ class Node:
             return name
         symname = '_' + cls.get_name().lstrip('_') + name
         return symname
+
+    def _ref_function_table(self):
+        for table in reversed(self.env):
+            try:
+                symbol = table.lookup(self.name)
+            except KeyError:
+                continue
+            if symbol.is_parameter():
+                return table
+        return None
 
     def base_table(self):
         """Return base symtable.

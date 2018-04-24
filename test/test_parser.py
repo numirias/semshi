@@ -104,6 +104,17 @@ def test_fixable_syntax_errors_attributes():
                '++++foo.bar      .          spam . ham   .eggs'
 
 
+@pytest.mark.xfail
+def test_fixable_syntax_errors3():
+    """Improved syntax fixing should be able to handle a bad symbol at the
+    end of the erroneous line."""
+    parser = make_parser('def foo(): x=1-')
+    print(parser.syntax_error.offset)
+    assert [n.hl_group for n in parser._nodes] == [LOCAL, LOCAL]
+    print(parser._nodes)
+    raise NotImplementedError()
+
+
 def test_name_len():
     """Name length needs to be byte length for the correct HL offset."""
     names = parse('asd + äöü')
@@ -764,6 +775,17 @@ def test_unused_args():
     assert [n.hl_group for n in names] == [
         LOCAL, PARAMETER, PARAMETER_UNUSED, PARAMETER, PARAMETER_UNUSED,
         PARAMETER, PARAMETER, PARAMETER_UNUSED, LOCAL, PARAMETER_UNUSED
+    ]
+
+
+def test_unused_args2():
+    """Detect unused args in nested scopes correctly."""
+    names = parse('''
+    def foo(x): lambda: x
+    def foo(x): [[x for a in b] for y in z]
+    ''')
+    assert [n.hl_group for n in names if n.name =='x'] == [
+        PARAMETER, FREE, PARAMETER, FREE
     ]
 
 
