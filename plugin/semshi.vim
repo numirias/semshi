@@ -42,6 +42,10 @@ if !exists('g:semshi#error_sign_delay')
     let g:semshi#error_sign_delay = 1.5
 endif
 
+if !exists('g:semshi#always_update_all_highlights')
+    let g:semshi#always_update_all_highlights = 0
+endif
+
 function! s:remove_builtin_extra()
     syn keyword pythonKeyword True False None
     hi link pythonKeyword pythonNumber

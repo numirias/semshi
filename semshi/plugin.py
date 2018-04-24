@@ -103,6 +103,7 @@ class Plugin:
                 self._options.mark_selected_nodes,
                 self._options.error_sign,
                 self._options.error_sign_delay,
+                self._options.always_update_all_highlights,
             )
             self._handlers[buf] = handler
         self._cur_handler = handler
@@ -211,3 +212,6 @@ class Options:
 
     def _option_error_sign_delay(self):
         return self._option('error_sign_delay')
+
+    def _option_always_update_all_highlights(self):
+        return bool(self._option('always_update_all_highlights'))

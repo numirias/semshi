@@ -13,7 +13,7 @@ class BufferHandler:
     """
     def __init__(self, add_hls, clear_hls, code_func, cursor_func, place_sign,
                  unplace_sign, excluded_hl_groups, mark_selected,
-                 error_sign, error_sign_delay):
+                 error_sign, error_sign_delay, always_update_all_highlights):
         self._add_hls = add_hls
         self._clear_hls = clear_hls
         self._get_code = code_func
@@ -22,6 +22,7 @@ class BufferHandler:
         self._unplace_sign = unplace_sign
         self._parser = Parser(exclude=excluded_hl_groups)
         self._scheduled = False
+        self._viewport_changed = False
         self._view = (0, 0)
         self._update_thread = None
         self._error_timer = None
@@ -34,12 +35,18 @@ class BufferHandler:
         self._mark_selected = mark_selected
         self._error_sign = error_sign
         self._error_sign_delay = error_sign_delay
+        self._always_update_all_highlights = always_update_all_highlights
 
     def viewport(self, start, stop):
         """Set viewport to line range from `start` to `stop` and add highlights
         that have become visible."""
         range = stop - start
         self._view = (start - range, stop + range)
+        # If the update thread is running, we defer addding visible highlights
+        # for the new viewport to after the update loop is done.
+        if self._update_thread is not None and self._update_thread.is_alive():
+            self._viewport_changed = True
+            return
         self._add_visible_hls()
 
     def update(self, force=False, sync=False):
@@ -56,6 +63,7 @@ class BufferHandler:
             # ...just make sure sure it runs another time.
             self._scheduled = True
             return
+        # Otherwise, start a new update thread.
         thread = threading.Thread(target=self._update_loop)
         self._update_thread = thread
         thread.start()
@@ -92,24 +100,30 @@ class BufferHandler:
         try:
             while True:
                 try:
-                    self._update_step()
+                    self._update_step(self._always_update_all_highlights)
                 except UnparsableError:
                     pass
                 if self._error_sign:
                     self._schedule_update_error_sign()
                 if not self._scheduled:
-                    return
+                    break
                 self._scheduled = False
+            if self._viewport_changed:
+                self._add_visible_hls()
+                self._viewport_changed = False
         except Exception:
             import traceback
             logger.error('Exception: %s', traceback.format_exc())
             raise
 
+    @debug_time
     def _update_step(self, force=False, sync=False):
         code = self._get_code(sync)
         add, rem = self._parser.parse(code, force)
+        # TODO If we force update, can't we just clear all pending?
         # Remove nodes to be cleared from pending list
-        rem_remaining = list(self._remove_from_pending(rem))
+        rem_remaining = debug_time('remove from pending')(
+            lambda: list(self._remove_from_pending(rem)))()
         add_visible, add_hidden = self._visible_and_hidden(add)
         # Add all new but hidden nodes to pending list
         self._pending_nodes += add_hidden
@@ -132,12 +146,17 @@ class BufferHandler:
         return visible, hidden
 
     # pylint: disable=protected-access
-    @debug_time(None, lambda s, n: ' %d/%d' % (len(n), len(s._pending_nodes)))
+    @debug_time(None, lambda s, n: '%d / %d' % (len(n), len(s._pending_nodes)))
     def _remove_from_pending(self, nodes):
+        """Return nodes which couldn't be removed from the pending list (which
+        means they need to be cleared from the buffer).
+        """
         for node in nodes:
             try:
                 self._pending_nodes.remove(node)
             except ValueError:
+                # TODO Can we maintain a list of nodes that should be active
+                # instead of creating it here?
                 yield node
 
     @debug_time(None, lambda _, a, c: '+%d, -%d' % (len(a), len(c)))

@@ -75,6 +75,7 @@ class Parser:
         logger.debug('nodes: +%d,  -%d', len(add), len(rem))
         return (self._filter_excluded(add), self._filter_excluded(rem))
 
+    @debug_time
     def _make_nodes(self, code, lines=None, change_lineno=None):
         """Return nodes in code.
 
@@ -97,6 +98,7 @@ class Parser:
             raise
         return visitor(lines, symtable_root, ast_root)
 
+    @debug_time
     def _fix_errors(self, code, lines, change_lineno):
         """Try to fix syntax errors in code (if present) and return AST, fixed
         code and list of fixed lines of code.
