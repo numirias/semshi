@@ -95,6 +95,8 @@ class BufferHandler:
                     self._update_step()
                 except UnparsableError:
                     pass
+                if self._error_sign:
+                    self._schedule_update_error_sign()
                 if not self._scheduled:
                     return
                 self._scheduled = False
@@ -106,8 +108,6 @@ class BufferHandler:
     def _update_step(self, force=False, sync=False):
         code = self._get_code(sync)
         add, rem = self._parser.parse(code, force)
-        if self._error_sign:
-            self._schedule_update_error_sign()
         # Remove nodes to be cleared from pending list
         rem_remaining = list(self._remove_from_pending(rem))
         add_visible, add_hidden = self._visible_and_hidden(add)
@@ -157,8 +157,8 @@ class BufferHandler:
             # If the current and previous update happened without syntax
             # errors, no action is required.
             return
-        # Otherwise, defer update to prevent the sign from frequently showing
-        # up while typing.
+        # Otherwise, delay update to prevent the sign from frequently flashing
+        # while typing.
         timer = threading.Timer(self._error_sign_delay,
                                 self._update_error_sign)
         self._error_timer = timer

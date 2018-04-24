@@ -115,6 +115,32 @@ def test_fixable_syntax_errors3():
     raise NotImplementedError()
 
 
+def test_syntax_error_cycle():
+    parser = make_parser('')
+    assert parser.prev_syntax_error is None
+    assert parser.syntax_error is None
+    parser.parse('1+')
+    assert parser.prev_syntax_error is None
+    assert parser.syntax_error.lineno == 1
+    parser.parse('1+1')
+    assert parser.prev_syntax_error.lineno == 1
+    assert parser.syntax_error is None
+    with pytest.raises(UnparsableError):
+        parser.parse('\n+\n+')
+    assert parser.prev_syntax_error is None
+    assert parser.syntax_error.lineno == 2
+
+
+def test_detect_symtable_syntax_error():
+    """Some syntax errors (such as duplicate parameter names) aren't directly
+    raised when compile() is called on the code, but cause problems later.
+    """
+    parser = Parser()
+    with pytest.raises(UnparsableError):
+        parser.parse('def foo(x, x): pass')
+    assert parser.syntax_error.lineno == 1
+
+
 def test_name_len():
     """Name length needs to be byte length for the correct HL offset."""
     names = parse('asd + äöü')

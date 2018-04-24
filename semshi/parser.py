@@ -36,15 +36,16 @@ class Parser:
         """Parse code and return tuple (add, remove) of added and removed nodes
         since last run.
 
-        Raises UnparsableError() if a syntax or recursion error occurred.
+        Raises UnparsableError() if unrecoverable error occurred.
         """
+        # TODO Refactor SyntaxError/UnparsableError mechanics
         try:
             return self._parse(code, force)
         except RecursionError as e:
             logger.debug('recursion error')
             raise UnparsableError(e)
         except SyntaxError as e:
-            logger.debug('syntax error: %s', e)
+            logger.debug('unrecoverable syntax error: %s', e)
             raise UnparsableError(e)
 
     @debug_time
@@ -87,7 +88,13 @@ class Parser:
         if fixed_code is not None:
             code = fixed_code
             lines = fixed_lines
-        symtable_root = self._make_symtable(code)
+        try:
+            symtable_root = self._make_symtable(code)
+        except SyntaxError as e:
+            # In some cases, the symtable() call raises a syntax error which
+            # hasn't been caught earlier (such as duplicate arguments)
+            self.syntax_error = e
+            raise
         return visitor(lines, symtable_root, ast_root)
 
     def _fix_errors(self, code, lines, change_lineno):
