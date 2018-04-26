@@ -5,6 +5,9 @@ from .util import logger, debug_time
 from .node import Node, SELECTED
 
 
+ERROR_SIGN_ID = 314000
+
+
 class BufferHandler:
     """Handler for a buffer.
 
@@ -184,11 +187,11 @@ class BufferHandler:
         timer.start()
 
     def _update_error_sign(self):
-        self._unplace_sign(314000)
+        self._unplace_sign(ERROR_SIGN_ID)
         error = self._parser.syntax_error
         if error is None:
             return
-        self._place_sign(314000, error.lineno, 'semshiError')
+        self._place_sign(ERROR_SIGN_ID, error.lineno, 'semshiError')
 
 
 def nodes_to_hl(nodes, clear=False, marked=False):

@@ -30,20 +30,15 @@ def vim():
     return vim
 
 
-def start_vim(argv=None):
+def start_vim(argv=None, file=None):
     if argv is None:
         argv = []
     argv = ['nvim', '-u', VIMRC, '--embed', *argv]
     vim = neovim.attach('child', argv=argv)
+    if file is not None:
+        fn = file or '/tmp/foo.py'
+        vim.command('edit %s' % fn)
     return vim
-
-
-@pytest.fixture
-def host_eval(vim):
-    def func(s):
-        res = vim.call('TestHelperEvalPython', s)
-        return res
-    return func
 
 
 def wait_for(func, cond, sleep=.001, tries=1000):
@@ -53,6 +48,24 @@ def wait_for(func, cond, sleep=.001, tries=1000):
             return res
         time.sleep(sleep)
     raise TimeoutError()
+
+
+def wait_for_tick(vim):
+    tick = host_eval(vim)('plugin._cur_handler._parser.tick')
+    wait_for(
+        lambda: host_eval(vim)('plugin._cur_handler._parser.tick'),
+        lambda x: x > tick
+    )
+
+
+@pytest.fixture
+def host_eval(vim, tick=False):
+    def func(s):
+        if tick:
+            wait_for_tick(vim)
+        res = vim.call('TestHelperEvalPython', s)
+        return res
+    return func
 
 
 def test_commands(vim):
@@ -113,14 +126,12 @@ def test_selected_nodes(vim, host_eval):
 
 
 def test_option_active():
-    vim = start_vim(['--cmd', 'let g:semshi#active = 0'])
-    vim.command('edit /tmp/foo.py')
+    vim = start_vim(['--cmd', 'let g:semshi#active = 0'], file='')
     assert host_eval(vim)('plugin._cur_handler is None')
 
 
 def test_option_excluded_hl_groups():
-    vim = start_vim(['--cmd', 'let g:semshi#excluded_hl_groups = ["global", "imported"]'])
-    vim.command('edit /tmp/foo.py')
+    vim = start_vim(['--cmd', 'let g:semshi#excluded_hl_groups = ["global", "imported"]'], file='')
     # TODO Actually, we don't want to inspect the object but check which
     # highlights are applied - but we can't until the neovim API becomes
     # available.
@@ -128,32 +139,22 @@ def test_option_excluded_hl_groups():
 
 
 def test_option_mark_selected_nodes():
-    vim = start_vim(['--cmd', 'let g:semshi#mark_selected_nodes = 0'])
-    vim.command('edit /tmp/foo.py')
+    vim = start_vim(['--cmd', 'let g:semshi#mark_selected_nodes = 0'], file='')
     vim.current.buffer[:] = ['aaa', 'aaa', 'aaa']
     time.sleep(0.01)
-    wait_for(
-        lambda: host_eval(vim)('len(plugin._cur_handler._selected_nodes)'),
-        lambda x: x == 0
-    )
-    vim = start_vim()
-    vim.command('edit /tmp/foo.py')
+    assert host_eval(vim)('len(plugin._cur_handler._selected_nodes)') == 0
+
+    vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa', 'aaa', 'aaa']
     time.sleep(0.01)
-    wait_for(
-        lambda: host_eval(vim)('len(plugin._cur_handler._selected_nodes)'),
-        lambda x: x == 2
-    )
+    assert host_eval(vim)('len(plugin._cur_handler._selected_nodes)') == 2
 
 
 def test_option_mark_original_node():
-    vim = start_vim(['--cmd', 'let g:semshi#mark_selected_nodes = 2'])
-    vim.command('edit /tmp/foo.py')
+    vim = start_vim(['--cmd', 'let g:semshi#mark_selected_nodes = 2'], file='')
     vim.current.buffer[:] = ['aaa', 'aaa']
-    wait_for(
-        lambda: host_eval(vim)('len(plugin._cur_handler._selected_nodes)'),
-        lambda x: x == 2
-    )
+    time.sleep(0.01)
+    assert host_eval(vim)('len(plugin._cur_handler._selected_nodes)') == 2
 
 
 synstack_cmd = 'map(synstack(line("."), col(".")), "synIDattr(v:val, \'name\')")'
@@ -170,7 +171,50 @@ def test_option_no_default_builtin_highlight():
     assert vim.eval(synstack_cmd) == ['pythonBuiltin']
 
 
-def test_cmd_highlight(vim):
+def test_option_always_update_all_highlights():
+    def ids():
+        return host_eval(vim, True)('[n.id for n in plugin._cur_handler._parser._nodes]')
+    vim = start_vim(file='')
+    vim.current.buffer[:] = ['aaa', 'aaa']
+    old = ids()
+    vim.current.buffer[:] = ['aaa', 'aab']
+    new = ids()
+    assert len(set(old) & set(new)) == 1
+
+    vim = start_vim(['--cmd', 'let g:semshi#always_update_all_highlights = 1'], file='')
+    vim.current.buffer[:] = ['aaa', 'aaa']
+    old = ids()
+    vim.current.buffer[:] = ['aaa', 'aab']
+    new = ids()
+    assert len(set(old) & set(new)) == 0
+
+
+def test_cmd_highlight(vim, host_eval):
     vim.command('edit /tmp/foo.py')
+    tick = host_eval('plugin._cur_handler._parser.tick')
     vim.command('Semshi highlight')
-    # TODO Verify that highlights actually have been applied
+    assert host_eval('plugin._cur_handler._parser.tick') > tick
+
+
+def test_syntax_error_sign():
+    jump_to_sign = 'exec "sign jump 314000 buffer=" . buffer_number("%")'
+    vim = start_vim(['--cmd', 'let g:semshi#error_sign_delay = 0'], file='')
+    vim.current.buffer[:] = ['+']
+    time.sleep(0.1)
+    vim.command(jump_to_sign)
+    vim.current.buffer[:] = ['a']
+    time.sleep(0.1)
+    with pytest.raises(neovim.api.nvim.NvimError):
+        vim.command(jump_to_sign)
+
+    vim = start_vim(['--cmd', 'let g:semshi#error_sign = 0'], file='')
+    vim.current.buffer[:] = ['+']
+    time.sleep(0.1)
+    with pytest.raises(neovim.api.nvim.NvimError):
+        vim.command(jump_to_sign)
+
+    vim = start_vim(['--cmd', 'let g:semshi#error_sign_delay = 1.0'], file='')
+    vim.current.buffer[:] = ['+']
+    time.sleep(0.1)
+    with pytest.raises(neovim.api.nvim.NvimError):
+        vim.command(jump_to_sign)

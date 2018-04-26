@@ -23,6 +23,8 @@ class Parser:
         self._excluded = exclude or []
         self._lines = []
         self._nodes = []
+        # Incremented for every successful parsing
+        self.tick = 0
         # Holds the SyntaxError exception of the current run
         self.syntax_error = None
         # Holds the error of the previous run, so the buffer handler knows if
@@ -72,10 +74,10 @@ class Parser:
             self._nodes = add
         # Only assign new lines when nodes have been updates accordingly
         self._lines = new_lines
-        logger.debug('nodes: +%d,  -%d', len(add), len(rem))
+        logger.debug('[%d] nodes: +%d,  -%d', self.tick, len(add), len(rem))
+        self.tick += 1
         return (self._filter_excluded(add), self._filter_excluded(rem))
 
-    @debug_time
     def _make_nodes(self, code, lines=None, change_lineno=None):
         """Return nodes in code.
 
