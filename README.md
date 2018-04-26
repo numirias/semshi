@@ -6,7 +6,7 @@
 
 Semshi provides semantic highlighting for Python in Neovim.
 
-Most syntax highlighters are regex-based and unaware of semantics. Semshi performs static analysis of Python code as you type. It asynchronously builds a syntax tree and symbol table to understand the scopes of locals, globals, arguments etc. and highlight them differently. This makes code easier to read and lets you quickly detect missing imports, unused arguments or misspelled names.
+Most syntax highlighters are regex-based and unaware of semantics. Semshi performs static analysis of Python code as you type. It asynchronously builds a syntax tree and symbol tables to understand the scopes of locals, globals, arguments etc. and highlight them differently. This makes code easier to read and lets you quickly detect missing imports, unused arguments or misspelled names.
 
 | With Semshi | Without Semshi |
 | --- | --- |
@@ -57,6 +57,7 @@ You can set these options in your vimrc (`~/.config/nvim/init.vim`):
 | `g:semshi#error_sign` | `1` | Show a sign in the sign column if a syntax error occurred. |
 | `g:semshi#error_sign_delay` | `1.5` | Delay in seconds until the syntax error sign is displayed. (A low delay time may distract while typing.) |
 | `g:semshi#always_update_all_highlights` | `0` | Update all visible highlights for every change. (Semshi tries to detect small changes and update only changed highlights. This can lead to some missing highlights. Turn this on for more reliable highlighting, but a small additional overhead.) |
+| `g:semshi#tolerate_syntax_errors` | `1` | Tolerate some minor syntax errors to update highlights even when the syntax is (temporarily) incorrect. (Comes with some overhead.) |
 
 ### Highlights
 

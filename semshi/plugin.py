@@ -26,17 +26,22 @@ class Plugin:
     _pattern = '*.py'
 
     def __init__(self, vim):
-        self.vim = vim
-        self._options = Options(vim)
+        self._vim = vim
         self._active = None
         self._handlers = {}
         self._cur_handler = None
+        self._options = None
 
     # Must not be async because we have to make sure that switching the buffer
     # handler is completed before other events are handled.
     @neovim.autocmd('BufEnter', pattern=_pattern, sync=True)
-    @if_active
     def event_buf_enter(self):
+        if self._options is None:
+            # We'd want to initialize the options on VimEnter, but that event
+            # is called *after* BufEnter, so we need to do it here.
+            self._options = Options(self._vim)
+        if not self._options.active:
+            return
         self._switch_handler()
         self._update_viewport()
         self._cur_handler.update()
@@ -72,54 +77,50 @@ class Plugin:
     @neovim.command('Semshi', nargs='*', sync=True)
     def cmd_semshi(self, args):
         if not args:
-            self.vim.out_write('This is semshi.\n')
+            self._vim.out_write('This is semshi.\n')
             return
         try:
             func = getattr(self, 'cmd_%s' % args[0])
         except AttributeError:
-            self.vim.err_write('Sub command not found: %s\n' % args[0])
+            self._vim.err_write('Sub command not found: %s\n' % args[0])
             return
         func(*args[1:])
 
     def cmd_version(self):
-        self.vim.out_write('semshi v0.0\n')
+        self._vim.out_write('semshi v0.0\n')
 
     def cmd_highlight(self):
         self._cur_handler.update(force=True, sync=True)
 
     def _switch_handler(self):
-        buf = self.vim.current.buffer
+        buf = self._vim.current.buffer
         try:
             handler = self._handlers[buf]
         except KeyError:
             handler = BufferHandler(
+                self._options,
                 partial(self._add_highlights, buf),
                 partial(self._clear_highlights, buf),
                 partial(self._code, buf),
                 self._cursor,
                 partial(self._place_sign, buf.number),
                 partial(self._unplace_sign, buf.number),
-                self._options.excluded_hl_groups,
-                self._options.mark_selected_nodes,
-                self._options.error_sign,
-                self._options.error_sign_delay,
-                self._options.always_update_all_highlights,
             )
             self._handlers[buf] = handler
         self._cur_handler = handler
 
     def _update_viewport(self):
-        start = self.vim.eval('line("w0")')
-        stop = self.vim.eval('line("w$")')
+        start = self._vim.eval('line("w0")')
+        stop = self._vim.eval('line("w$")')
         self._cur_handler.viewport(start, stop)
 
     def _mark_selected(self):
         if not self._options.mark_selected_nodes:
             return
-        self._cur_handler.mark_selected(self.vim.current.window.cursor)
+        self._cur_handler.mark_selected(self._vim.current.window.cursor)
 
     def _cursor(self, sync):
-        func = lambda: self.vim.current.window.cursor
+        func = lambda: self._vim.current.window.cursor
         return func() if sync else self._wait_for(func)
 
     def _code(self, buf, sync):
@@ -137,7 +138,7 @@ class Plugin:
             nonlocal res
             res = func()
             event.set()
-        self.vim.async_call(wrapper)
+        self._vim.async_call(wrapper)
         event.wait()
         return res
 
@@ -168,29 +169,27 @@ class Plugin:
         # https://github.com/neovim/python-client/issues/310
         batch_size = 3000
         for i in range(0, len(calls), batch_size):
-            self.vim.api.call_atomic(calls[i:i + batch_size], async=True)
+            self._vim.api.call_atomic(calls[i:i + batch_size], async=True)
 
     def _place_sign(self, buffer_num, id, line, name):
-        self.vim.command('sign place %d line=%d name=%s buffer=%d' %
-                         (id, line, name, buffer_num), async=True)
+        self._vim.command('sign place %d line=%d name=%s buffer=%d' %
+                          (id, line, name, buffer_num), async=True)
 
     def _unplace_sign(self, buffer_num, id):
-        self.vim.command('sign unplace %d buffer=%d' %
-                         (id, buffer_num), async=True)
+        self._vim.command('sign unplace %d buffer=%d' %
+                          (id, buffer_num), async=True)
 
 
 class Options:
     """Plugin options.
 
-    Options are fetched lazily and only evaluated once.
     """
     def __init__(self, vim):
         self._vim = vim
-
-    def __getattr__(self, item):
-        val = self.__getattribute__('_option_%s' % item)()
-        setattr(self, item, val)
-        return val
+        for name, func in Options.__dict__.items():
+            if not name.startswith('_option_'):
+                continue
+            setattr(self, name[8:], func(self))
 
     def _option(self, option_name):
         return self._vim.eval('g:semshi#%s' % option_name)
@@ -215,3 +214,6 @@ class Options:
 
     def _option_always_update_all_highlights(self):
         return bool(self._option('always_update_all_highlights'))
+
+    def _option_tolerate_syntax_errors(self):
+        return bool(self._option('tolerate_syntax_errors'))

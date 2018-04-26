@@ -218,3 +218,15 @@ def test_syntax_error_sign():
     time.sleep(0.1)
     with pytest.raises(neovim.api.nvim.NvimError):
         vim.command(jump_to_sign)
+
+
+def test_option_tolerate_syntax_errors():
+    vim = start_vim(file='')
+    vim.current.buffer[:] = ['a+']
+    num_nodes = host_eval(vim, True)('len(plugin._cur_handler._parser._nodes)')
+    assert num_nodes == 1
+
+    vim = start_vim(['--cmd', 'let g:semshi#tolerate_syntax_errors = 0'], file='')
+    vim.current.buffer[:] = ['a+']
+    num_nodes = host_eval(vim, True)('len(plugin._cur_handler._parser._nodes)')
+    assert num_nodes == 0

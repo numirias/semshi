@@ -19,11 +19,12 @@ class UnparsableError(Exception):
 
 class Parser:
 
-    def __init__(self, exclude=None):
+    def __init__(self, exclude=None, fix_syntax=True):
         self._excluded = exclude or []
+        self._fix_syntax = fix_syntax
         self._lines = []
         self._nodes = []
-        # Incremented for every successful parsing
+        # Incremented after every parse call
         self.tick = 0
         # Holds the SyntaxError exception of the current run
         self.syntax_error = None
@@ -42,12 +43,12 @@ class Parser:
         """
         # TODO Refactor SyntaxError/UnparsableError mechanics
         try:
-            return self._parse(code, force)
-        except RecursionError as e:
-            logger.debug('recursion error')
-            raise UnparsableError(e)
-        except SyntaxError as e:
-            logger.debug('unrecoverable syntax error: %s', e)
+            res = self._parse(code, force)
+            self.tick += 1
+            return res
+        except (SyntaxError, RecursionError) as e:
+            logger.debug('parsing error: %s', e)
+            self.tick += 1
             raise UnparsableError(e)
 
     @debug_time
@@ -75,7 +76,6 @@ class Parser:
         # Only assign new lines when nodes have been updates accordingly
         self._lines = new_lines
         logger.debug('[%d] nodes: +%d,  -%d', self.tick, len(add), len(rem))
-        self.tick += 1
         return (self._filter_excluded(add), self._filter_excluded(rem))
 
     def _make_nodes(self, code, lines=None, change_lineno=None):
@@ -112,7 +112,7 @@ class Parser:
         - If that fails, do the same with the line of the last change.
         - If all attempts failed, raise original SyntaxError exception.
         """
-        # TODO Refactor
+        # TODO Refactor and rename
         # TODO Cache previous attempt?
         self.prev_syntax_error = self.syntax_error
         try:
@@ -122,6 +122,9 @@ class Parser:
             orig_error = e
             error_idx = e.lineno - 1
         self.syntax_error = orig_error
+        if not self._fix_syntax:
+            # Don't attempt to fix syntax errors
+            raise orig_error
         lines = lines[:] # TODO Do we need a copy?
         orig_line = lines[error_idx]
         lines[error_idx] = self._fix_line(orig_line)

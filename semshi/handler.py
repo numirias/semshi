@@ -14,16 +14,16 @@ class BufferHandler:
     The handler runs the parser, adds and removes highlights, keeps tracks of
     which highlights are visible and which ones need to be added or removed.
     """
-    def __init__(self, add_hls, clear_hls, code_func, cursor_func, place_sign,
-                 unplace_sign, excluded_hl_groups, mark_selected,
-                 error_sign, error_sign_delay, always_update_all_highlights):
+    def __init__(self, options, add_hls, clear_hls, code_func, cursor_func,
+                 place_sign, unplace_sign):
         self._add_hls = add_hls
         self._clear_hls = clear_hls
         self._get_code = code_func
         self._get_cursor = cursor_func
         self._place_sign = place_sign
         self._unplace_sign = unplace_sign
-        self._parser = Parser(exclude=excluded_hl_groups)
+        self._parser = Parser(options.excluded_hl_groups,
+                              options.tolerate_syntax_errors)
         self._scheduled = False
         self._viewport_changed = False
         self._view = (0, 0)
@@ -35,10 +35,7 @@ class BufferHandler:
         # Nodes which are currently marked as a selected. We keep track of them
         # to check if they haven't changed between updates.
         self._selected_nodes = []
-        self._mark_selected = mark_selected
-        self._error_sign = error_sign
-        self._error_sign_delay = error_sign_delay
-        self._always_update_all_highlights = always_update_all_highlights
+        self._options = options
 
     def viewport(self, start, stop):
         """Set viewport to line range from `start` to `stop` and add highlights
@@ -79,9 +76,9 @@ class BufferHandler:
         cursor position.
         """
         # TODO Make async?
-        if not self._mark_selected:
+        if not self._options.mark_selected_nodes:
             return
-        mark_original = bool(self._mark_selected - 1)
+        mark_original = bool(self._options.mark_selected_nodes - 1)
         nodes = self._parser.same_nodes(cursor, mark_original)
         start, stop = self._view
         nodes = [n for n in nodes if start <= n.lineno <= stop]
@@ -103,10 +100,11 @@ class BufferHandler:
         try:
             while True:
                 try:
-                    self._update_step(self._always_update_all_highlights)
+                    self._update_step(
+                        self._options.always_update_all_highlights)
                 except UnparsableError:
                     pass
-                if self._error_sign:
+                if self._options.error_sign:
                     self._schedule_update_error_sign()
                 if not self._scheduled:
                     break
@@ -181,7 +179,7 @@ class BufferHandler:
             return
         # Otherwise, delay update to prevent the sign from frequently flashing
         # while typing.
-        timer = threading.Timer(self._error_sign_delay,
+        timer = threading.Timer(self._options.error_sign_delay,
                                 self._update_error_sign)
         self._error_timer = timer
         timer.start()
