@@ -96,12 +96,12 @@ def test_current_nodes(vim, host_eval):
 
 
 @pytest.mark.xfail
-def test_highlights(vim, host_eval):
+def test_highlights():
     """Assert that highlights were applied correctly. This test can only be
     implemented once the neovim API provides a way to retrieve the currently
     active highlights. See: https://github.com/neovim/neovim/issues/6412
     """
-    assert False # TODO
+    raise NotImplementedError() # TODO
 
 
 def test_switch_handler(vim, host_eval):

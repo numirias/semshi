@@ -52,12 +52,12 @@ You can set these options in your vimrc (`~/.config/nvim/init.vim`):
 | `g:semshi#active` | `1` | Activate event handlers. |
 | `g:semshi#excluded_hl_groups` | `['local']` | List of highlight groups to not highlight. Chose from `local`, `unresolved`, `attribute`, `builtin`, `free`, `global`, `parameter`, `parameterUnused`, `self`, `imported`. (It's recommended to keep `local` in the list because highlighting all locals in a large file can cause performance issues.) |
 | `g:semshi#mark_selected_nodes ` | ` 1` | Mark selected nodes (those with the same name and scope as the one under the cursor). Set to `2` to highlight the node currently under the cursor, too. |
-| `g:semshi#no_default_builtin_highlight` | `1` | Disable builtin highlighting by Vim's own Python syntax highlighter, because that's Semshi's job. If you turn it off, Vim will add incorrect highlights. |
+| `g:semshi#no_default_builtin_highlight` | `1` | Disable builtin highlighting by Vim's own Python syntax highlighter, because that's Semshi's job. If you turn it off, Vim may add incorrect highlights. |
 | `g:semshi#simplify_markup` | `1` | Simplify Python markup. Semshi introduces lots of new colors, so this option makes the highlighting of other syntax elements less distracting, binding most of them to `pythonStatement`. If you think Semshi messes with your colorscheme too much, try turning this off. |
 | `g:semshi#error_sign` | `1` | Show a sign in the sign column if a syntax error occurred. |
 | `g:semshi#error_sign_delay` | `1.5` | Delay in seconds until the syntax error sign is displayed. (A low delay time may distract while typing.) |
 | `g:semshi#always_update_all_highlights` | `0` | Update all visible highlights for every change. (Semshi tries to detect small changes and update only changed highlights. This can lead to some missing highlights. Turn this on for more reliable highlighting, but a small additional overhead.) |
-| `g:semshi#tolerate_syntax_errors` | `1` | Tolerate some minor syntax errors to update highlights even when the syntax is (temporarily) incorrect. (Comes with some overhead.) |
+| `g:semshi#tolerate_syntax_errors` | `1` | Tolerate some minor syntax errors to update highlights even when the syntax is (temporarily) incorrect. (Smoother experience, but comes with some overhead.) |
 
 ### Highlights
 

@@ -5,31 +5,20 @@ from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAMETER, PARAMETE
 from semshi.parser import Parser, UnparsableError
 from semshi import parser
 
-from .conftest import parse, make_parser, make_tree, dump_dict, dump_ast, dump_symtable
-
-
-# TODO Reformat multiline stirngs from """ to '''
+from .conftest import parse, make_parser, make_tree
 
 
 def test_group():
     assert group('foo') == 'semshiFoo'
 
 
-def test_basic():
-    names = parse("""
-    x = 1
-    """)
-    assert [n.name for n in names] == ['x']
+def test_basic_name():
+    assert [n.name for n in parse('x = 1')] == ['x']
 
 
 def test_no_names():
-    names = parse("""
-    """)
-    assert names == []
-    names = parse("""
-    pass
-    """)
-    assert names == []
+    assert parse('') == []
+    assert parse('pass') == []
 
 
 def test_recursion_error():
@@ -38,19 +27,19 @@ def test_recursion_error():
 
 
 def test_syntax_error_fail():
-    """Syntax error can't be fixed with a single change."""
+    """Syntax errors which can't be fixed with a single change."""
     parser = Parser()
     with pytest.raises(UnparsableError):
         parser.parse('(\n(')
     with pytest.raises(UnparsableError):
         parser.parse(')\n(')
-    # Intentionally no change
+    # Intentionally no difference to previous one
     with pytest.raises(UnparsableError):
-         parser.parse(')\n(')
+        parser.parse(')\n(')
 
 
 def test_syntax_error_fail2():
-    """Syntax error can't be fixed with a single change."""
+    """Syntax errors which can't be fixed with a single change."""
     parser = make_parser('a\nb/')
     with pytest.raises(UnparsableError):
         parser.parse('a(\nb/')
@@ -78,6 +67,17 @@ def test_fixable_syntax_errors2():
     assert {n.name for n in parser._nodes} == {'c', 'b'}
 
 
+@pytest.mark.xfail
+def test_fixable_syntax_errors3():
+    """Improved syntax fixing should be able to handle a bad symbol at the
+    end of the erroneous line."""
+    parser = make_parser('def foo(): x=1-')
+    print(parser.syntax_error.offset)
+    assert [n.hl_group for n in parser._nodes] == [LOCAL, LOCAL]
+    print(parser._nodes)
+    raise NotImplementedError()
+
+
 def test_fixable_syntax_errors_indent():
     parser = make_parser('''def foo():\n \t \tx-''')
     assert parser._nodes[-1].pos == (2, 4)
@@ -102,17 +102,6 @@ def test_fixable_syntax_errors_attributes():
     # Doesn't matter that we don't preserve tabs because we only want offsets
     assert fix('def foo.bar( + 1\t. 0 ... .1 spam . ham \t .eggs..') == \
                '++++foo.bar      .          spam . ham   .eggs'
-
-
-@pytest.mark.xfail
-def test_fixable_syntax_errors3():
-    """Improved syntax fixing should be able to handle a bad symbol at the
-    end of the erroneous line."""
-    parser = make_parser('def foo(): x=1-')
-    print(parser.syntax_error.offset)
-    assert [n.hl_group for n in parser._nodes] == [LOCAL, LOCAL]
-    print(parser._nodes)
-    raise NotImplementedError()
 
 
 def test_syntax_error_cycle():
@@ -149,12 +138,12 @@ def test_name_len():
 
 
 def test_comprehension_scopes():
-    names = parse("""
+    names = parse('''
     [a for b in c]
     (d for e in f)
     {g for h in i}
     {j:k for l in m}
-    """)
+    ''')
     root = make_tree(names)
     assert root['names'] == ['c', 'f', 'i', 'm']
     assert root['listcomp']['names'] == ['a', 'b']
@@ -164,13 +153,13 @@ def test_comprehension_scopes():
 
 
 def test_function_scopes():
-    names = parse("""
+    names = parse('''
     def func(a, b, *c, d=e, f=[g for g in h], **i):
         pass
     def func2(j=k):
         pass
     func(x, y=p, **z)
-    """)
+    ''')
     root = make_tree(names)
     assert root['names'] == [
         'e', 'h', 'func', 'k', 'func2', 'func', 'x', 'p', 'z'
@@ -181,19 +170,19 @@ def test_function_scopes():
 
 
 def test_class_scopes():
-    names = parse("""
+    names = parse('''
     a = 1
     class A(x, y=z):
         a = 2
         def f():
             a
-    """)
+    ''')
     root = make_tree(names)
     assert root['names'] == ['a', 'A', 'x', 'z']
 
 
 def test_import_scopes_and_positions():
-    names = parse("""
+    names = parse('''
     import aa
     import BB as cc
     from DD import ee
@@ -210,7 +199,7 @@ def test_import_scopes_and_positions():
     import FFF.GGG as hhh
     from III.JJJ import KKK as lll
     import mmm.NNN.OOO, ppp.QQQ
-    """)
+    ''')
     root = make_tree(names)
     assert root['names'] == [
         'aa', 'cc', 'ee', 'hh', 'ii', 'kk', 'll', 'oo', 'qq', 'tt', 'vv', 'xx',
@@ -267,7 +256,7 @@ def test_multibyte_import_positions():
 
 def test_name_mangling():
     """Leading double underscores can lead to a different symbol name."""
-    names = parse("""
+    names = parse('''
     __foo = 1
     class A:
         __foo
@@ -286,7 +275,7 @@ def test_name_mangling():
     class ___A_:
         def f():
             __x
-    """)
+    ''')
     root = make_tree(names)
     assert root['names'] == ['__foo', 'A', '_A', '_A_', '___A_']
     assert root['A']['names'] == ['_A__foo', 'B', '_A__C']
@@ -299,7 +288,7 @@ def test_name_mangling():
 
 def test_self_param():
     """If self/cls appear in a class, they must have a speical group."""
-    names = parse("""
+    names = parse('''
     self
     def x(self):
         pass
@@ -316,7 +305,7 @@ def test_self_param():
             pass
         def c(cls, foo):
             pass
-    """)
+    ''')
     groups = [n.hl_group for n in names if n.name in ['self', 'cls']]
     assert [PARAMETER if g is PARAMETER_UNUSED else g for g in groups] == [
         UNRESOLVED, PARAMETER, SELF, FREE, PARAMETER, PARAMETER, PARAMETER,
@@ -336,12 +325,12 @@ def test_self_with_decorator():
 
 def test_self_target():
     """The target of a self with an attribute should be the attribute node."""
-    parser = make_parser("""
+    parser = make_parser('''
     self.abc
     class Foo:
         def x(self):
             self.abc
-    """)
+    ''')
     names = parser._nodes
     assert names[0].target is None
     last_self = names[-1]
@@ -352,27 +341,24 @@ def test_self_target():
 
 
 def test_unresolved_name():
-    names = parse("""
-    def foo():
-        a
-    """)
+    names = parse('def foo(): a')
     assert names[1].hl_group == UNRESOLVED
 
 def test_imported_names():
-    names = parse("""
+    names = parse('''
     import foo
     import abs
     foo, abs
-    """)
+    ''')
     assert [n.hl_group for n in names] == [IMPORTED] * 4
 
 
 def test_nested_comprehension():
-    names = parse("""
+    names = parse('''
     [a for b in c for d in e for f in g]
     [h for i in [[x for y in z] for k in [l for m in n]]]
     [o for p, q, r in s]
-    """)
+    ''')
     root = make_tree(names)
     assert root['names'] == ['c', 'n', 's']
     assert root['listcomp']['names'] == [
@@ -381,7 +367,7 @@ def test_nested_comprehension():
     ]
 
 def test_try_except_order():
-    names = parse("""
+    names = parse('''
     try:
         def A():
             a
@@ -394,7 +380,7 @@ def test_try_except_order():
     finally:
         def D():
             d
-    """)
+    ''')
     root = make_tree(names)
     assert root['A']['names'] == ['a']
     assert root['B']['names'] == ['b']
@@ -403,10 +389,10 @@ def test_try_except_order():
 
 
 def test_lambda():
-    names = parse("""
+    names = parse('''
     lambda a: b
     lambda x=y: z
-    """)
+    ''')
     root = make_tree(names)
     assert root['lambda']['names'] == ['a', 'b', 'x', 'z']
     assert root['names'] == ['y']
@@ -418,12 +404,12 @@ def test_fstrings():
 
 
 def test_type_hints():
-    names = parse("""
+    names = parse('''
     def f(a:A, b, *c:C, d:D=dd, **e:E) -> z:
         pass
     async def f2(x:X=y):
         pass
-    """)
+    ''')
     root = make_tree(names)
     assert root['names'] == [
         'dd','f', 'A', 'D', 'C', 'E', 'z', 'y', 'f2', 'X'
@@ -431,7 +417,7 @@ def test_type_hints():
 
 
 def test_decorator():
-    names = parse("""
+    names = parse('''
     @d1(a, b=c)
     class A: pass
     @d2(x, y=z)
@@ -440,7 +426,7 @@ def test_decorator():
     @d3
     async def C():
         pass
-    """)
+    ''')
     root = make_tree(names)
     assert root['names'] == [
         'd1', 'a', 'c', 'A', 'd2', 'x', 'z', 'B', 'd3', 'C'
@@ -449,31 +435,31 @@ def test_decorator():
 def test_global_builtin():
     """A builtin name assigned globally should be highlighted as a global, not
     a builtin."""
-    names = parse("""
+    names = parse('''
     len
     set = 1
     def foo(): set, str
-    """)
+    ''')
     assert names[0].hl_group == BUILTIN
     assert names[-2].hl_group == GLOBAL
     assert names[-1].hl_group == BUILTIN
 
 def test_global_statement():
-    names = parse("""
+    names = parse('''
     x = 1
     def foo():
         global x
         x
-    """)
+    ''')
     assert names[-1].hl_group == GLOBAL
 
 
 def test_positions():
-    names = parse("""
+    names = parse('''
     a = 1
     def func(x=y):
         b = 2
-    """)
+    ''')
     assert [(name.name,) + name.pos for name in names] == [
         ('a', 2, 0),
         ('y', 3, 11),
@@ -484,7 +470,7 @@ def test_positions():
 
 
 def test_class_and_function_positions():
-    names = parse("""
+    names = parse('''
     def aaa(): pass
     async def bbb(): pass
     async  def  ccc(): pass
@@ -499,7 +485,7 @@ def test_class_and_function_positions():
     class hhh():
         def foo():
             pass
-    """)
+    ''')
     assert [name.pos for name in names] == [
         (2, 4),
         (3, 10),
@@ -516,13 +502,13 @@ def test_class_and_function_positions():
 
 
 def test_same_nodes():
-    parser = make_parser("""
+    parser = make_parser('''
     x = 1
     class A:
         x
         def B():
             x
-    """)
+    ''')
     names = parser._nodes
     x, A, A_x, B, B_x = names
     same_nodes = set(parser.same_nodes(x))
@@ -530,14 +516,14 @@ def test_same_nodes():
 
 
 def test_base_scope_global():
-    parser = make_parser("""
+    parser = make_parser('''
     x = 1
     def a():
         x = 2
         def b():
             global x
             x
-    """)
+    ''')
     names = parser._nodes
     x, a, a_x, b, b_x = names
     same_nodes = set(parser.same_nodes(x))
@@ -545,12 +531,12 @@ def test_base_scope_global():
 
 
 def test_base_scope_free():
-    parser = make_parser("""
+    parser = make_parser('''
     def a():
         x = 1
         def b():
             x
-    """)
+    ''')
     names = parser._nodes
     a, a_x, b, b_x = names
     same_nodes = set(parser.same_nodes(a_x))
@@ -558,11 +544,11 @@ def test_base_scope_free():
 
 
 def test_base_scope_class():
-    parser = make_parser("""
+    parser = make_parser('''
     class A:
         x = 1
         x
-    """)
+    ''')
     names = parser._nodes
     A, x1, x2 = names
     same_nodes = set(parser.same_nodes(x1))
@@ -570,14 +556,14 @@ def test_base_scope_class():
 
 
 def test_base_scope_class_nested():
-    parser = make_parser("""
+    parser = make_parser('''
     def z():
         x = 1
         class A():
             x = 2
             def b():
                 return x
-    """)
+    ''')
     names = parser._nodes
     z, z_x, A, A_x, b, b_x = names
     same_nodes = set(parser.same_nodes(z_x))
@@ -585,19 +571,19 @@ def test_base_scope_class_nested():
 
 
 def test_base_scope_nonlocal_free():
-    parser = make_parser("""
+    parser = make_parser('''
     def foo():
         a = 1
         def bar():
             nonlocal a
             a = 1
-    """)
+    ''')
     foo, foo_a, bar, bar_a = parser._nodes
     assert set(parser.same_nodes(foo_a)) == {foo_a, bar_a}
 
 
 def test_attributes():
-    parser = make_parser("""
+    parser = make_parser('''
     aa.bb
     cc.self.dd
     self.ee
@@ -615,7 +601,7 @@ def test_attributes():
             self.hh
         def f(foo):
             self.gg
-    """)
+    ''')
     names = parser._nodes
     names = [n for n in names if n.is_attr]
     b_gg, c_gg, d_gg, e_hh = names
@@ -634,113 +620,48 @@ def test_same_nodes_empty():
     assert parser.same_nodes((1, 0)) == []
 
 
-@pytest.mark.xfail
 def test_refresh_names():
-    """Add and clear exact names."""
-    parser = Parser()
-    add, clear = parser.parse(dedent("""
-    def foo():
-        x = y
-    """))
-    assert len(add) == 3
-    assert len(clear) == 0
-    add, clear = parser.parse(dedent("""
-    def foo():
-        x = y
-    """))
-    assert len(add) == 0
-    assert len(clear) == 0
-    add, clear = parser.parse(dedent("""
-    def foo():
-        z = y
-    """))
-    assert len(add) == 1
-    assert len(clear) == 1
-    add, clear = parser.parse(dedent("""
-    def foo():
-        z = y
-        a, b
-    """))
-    assert len(add) == 2
-    assert len(clear) == 0
-    add, clear = parser.parse(dedent("""
-    def foo():
-        z = y
-        c, d
-    """))
-    assert len(add) == 2
-    assert len(clear) == 2
-    add, clear = parser.parse(dedent("""
-    def foo():
-        z = y, k
-        1, 1
-    """))
-    assert len(add) == 1
-    assert len(clear) == 2
-
-
-def test_refresh_names_new():
     """Clear everything if more than one line changes."""
     parser = Parser()
-    add, clear = parser.parse(dedent("""
+    add, clear = parser.parse(dedent('''
     def foo():
         x = y
-    """))
+    '''))
     assert len(add) == 3
     assert len(clear) == 0
-    add, clear = parser.parse(dedent("""
+    add, clear = parser.parse(dedent('''
     def foo():
         x = y
-    """))
+    '''))
     assert len(add) == 0
     assert len(clear) == 0
-    add, clear = parser.parse(dedent("""
+    add, clear = parser.parse(dedent('''
     def foo():
         z = y
-    """))
+    '''))
     assert len(add) == 1
     assert len(clear) == 1
-    add, clear = parser.parse(dedent("""
+    add, clear = parser.parse(dedent('''
     def foo():
         z = y
         a, b
-    """))
+    '''))
     assert len(add) == 5
     assert len(clear) == 3
-    add, clear = parser.parse(dedent("""
+    add, clear = parser.parse(dedent('''
     def foo():
         z = y
         c, d
-    """))
+    '''))
     assert len(add) == 2
     assert len(clear) == 2
-    add, clear = parser.parse(dedent("""
+    add, clear = parser.parse(dedent('''
     def foo():
         z = y, k
         1, 1
-    """))
+    '''))
     assert len(add) == 4
     assert len(clear) == 5
-
-
-@pytest.mark.xfail
-def test_efficient_diff():
-    # TODO Deprecated?
-    from semshi.util import logger
-    import time
-    parser = Parser()
-    code = '\n'.join(['foo' + str(d) for d in range(10000)])
-
-    t = time.time()
-    parser.parse(code)
-    logger.debug('FIRST %f', time.time() - t)
-
-    t = time.time()
-    code = '\n'.join(['foo' + str(d + (d % 2)) for d in range(10000)])
-    parser.parse(code)
-    logger.debug('SECOND %f', time.time() - t)
-    # TODO
-    raise
 
 
 def test_exclude_types():
@@ -842,54 +763,20 @@ class TestNode:
         assert a.id + 1 == b.id
 
 
-class TestDiffs:
-
-    @pytest.mark.xfail
-    def test_insertion(self):
-        # TODO Deprecated.
-        def insertions(c1, c2):
-            return Parser.insertions(c1, c2)
-        assert insertions(list('abc'), list('Xabc')) == (0, 1)
-        assert insertions(list('abc'), list('aXXbc')) == (1, 2)
-        assert insertions(list('abc'), list('aXbXc')) is None
-        assert insertions(list(''), list('X')) == (0, 1)
-        assert insertions(list('a'), list('aXX')) == (1, 2)
-
-    def test_minor_change(self):
-        def minor_change(c1, c2):
-            return Parser._minor_change(c1, c2)
-        assert minor_change(list('abc'), list('axc')) == 1
-        assert minor_change(list('abc'), list('xbx')) == -1
-        assert minor_change(list('abc'), list('abcedf')) == -1
-        assert minor_change(list('abc'), list('abc')) is None
-
-    def test_diff(self):
-        """The id of a saved name should remain the same so that we can remove
-        it later by ID."""
-        # TODO remove prints
-        parser = Parser()
-        add0, rem = parser.parse('foo')
-        add, rem = parser.parse('foo ')
-        add, rem = parser.parse('foo = 1')
-        assert add0[0].id == rem[0].id
+def test_diff():
+    """The id of a saved name should remain the same so that we can remove
+    it later by ID."""
+    parser = Parser()
+    add0, rem = parser.parse('foo')
+    add, rem = parser.parse('foo ')
+    add, rem = parser.parse('foo = 1')
+    assert add0[0].id == rem[0].id
 
 
-@pytest.mark.skip
-def test_multiple_files():
-    """Fuzzing tests against lots of different files."""
-    for root, dirs, files in os.walk('/usr/lib/python3.6/'):
-        for file in files:
-            if not file.endswith('.py'):
-                continue
-            path = os.path.join(root, file)
-            print(path)
-            with open(path, encoding='utf-8', errors='ignore') as f:
-                code = f.read()
-                try:
-                    names = parse(code)
-                except UnparsableError as e:
-                    print('unparsable', path, e.error)
-                    continue
-                except Exception as e:
-                    dump_symtable(code)
-                    raise
+def test_minor_change():
+    def minor_change(c1, c2):
+        return Parser._minor_change(c1, c2)
+    assert minor_change(list('abc'), list('axc')) == 1
+    assert minor_change(list('abc'), list('xbx')) == -1
+    assert minor_change(list('abc'), list('abcedf')) == -1
+    assert minor_change(list('abc'), list('abc')) is None
