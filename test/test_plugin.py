@@ -58,6 +58,13 @@ def wait_for_tick(vim):
     )
 
 
+def wait_for_update_thread(vim):
+    wait_for(
+        lambda: host_eval(vim)('plugin._cur_handler._update_thread.is_alive()'),
+        lambda x: not x,
+    )
+
+
 @pytest.fixture
 def host_eval(vim, tick=False):
     def func(s):
@@ -122,7 +129,7 @@ def test_selected_nodes(vim, host_eval):
     node_positions = lambda: host_eval('[n.pos for n in plugin._cur_handler._selected_nodes]')
     wait_for(node_positions, lambda x: x == [[2, 0]])
     vim.call('setpos', '.', [0, 2,1])
-    wait_for( node_positions, lambda x: x == [[1, 0]])
+    wait_for(node_positions, lambda x: x == [[1, 0]])
 
 
 def test_option_active():
@@ -141,30 +148,27 @@ def test_option_excluded_hl_groups():
 def test_option_mark_selected_nodes():
     vim = start_vim(['--cmd', 'let g:semshi#mark_selected_nodes = 0'], file='')
     vim.current.buffer[:] = ['aaa', 'aaa', 'aaa']
-    time.sleep(0.01)
+    wait_for_update_thread(vim)
     assert host_eval(vim)('len(plugin._cur_handler._selected_nodes)') == 0
 
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa', 'aaa', 'aaa']
-    time.sleep(0.01)
+    wait_for_update_thread(vim)
     assert host_eval(vim)('len(plugin._cur_handler._selected_nodes)') == 2
 
-
-def test_option_mark_original_node():
     vim = start_vim(['--cmd', 'let g:semshi#mark_selected_nodes = 2'], file='')
-    vim.current.buffer[:] = ['aaa', 'aaa']
-    time.sleep(0.01)
-    assert host_eval(vim)('len(plugin._cur_handler._selected_nodes)') == 2
-
-
-synstack_cmd = 'map(synstack(line("."), col(".")), "synIDattr(v:val, \'name\')")'
+    vim.current.buffer[:] = ['aaa', 'aaa', 'aaa']
+    wait_for_update_thread(vim)
+    assert host_eval(vim)('len(plugin._cur_handler._selected_nodes)') == 3
 
 
 def test_option_no_default_builtin_highlight():
+    synstack_cmd = 'map(synstack(line("."), col(".")), "synIDattr(v:val, \'name\')")'
     vim = start_vim()
     vim.command('set syntax=python')
     vim.current.buffer[:] = ['len']
     assert vim.eval(synstack_cmd) == []
+
     vim = start_vim(['--cmd', 'let g:semshi#no_default_builtin_highlight = 0'])
     vim.command('set syntax=python')
     vim.current.buffer[:] = ['len']
@@ -198,24 +202,25 @@ def test_cmd_highlight(vim, host_eval):
 
 def test_syntax_error_sign():
     jump_to_sign = 'exec "sign jump 314000 buffer=" . buffer_number("%")'
+
     vim = start_vim(['--cmd', 'let g:semshi#error_sign_delay = 0'], file='')
     vim.current.buffer[:] = ['+']
-    time.sleep(0.1)
+    wait_for_update_thread(vim)
     vim.command(jump_to_sign)
     vim.current.buffer[:] = ['a']
-    time.sleep(0.1)
+    wait_for_update_thread(vim)
     with pytest.raises(neovim.api.nvim.NvimError):
         vim.command(jump_to_sign)
 
     vim = start_vim(['--cmd', 'let g:semshi#error_sign = 0'], file='')
     vim.current.buffer[:] = ['+']
-    time.sleep(0.1)
+    wait_for_update_thread(vim)
     with pytest.raises(neovim.api.nvim.NvimError):
         vim.command(jump_to_sign)
 
     vim = start_vim(['--cmd', 'let g:semshi#error_sign_delay = 1.0'], file='')
     vim.current.buffer[:] = ['+']
-    time.sleep(0.1)
+    wait_for_update_thread(vim)
     with pytest.raises(neovim.api.nvim.NvimError):
         vim.command(jump_to_sign)
 
