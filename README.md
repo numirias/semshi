@@ -20,9 +20,10 @@ In above example, you can easily distinguish arguments (blue), globals (orange),
 - Highlighting of all currently selected nodes.
 - Indication of syntax errors.
 - Highlighting of unused arguments.
+- Scope-aware renaming of nodes.
 
 **TODO:**
-- Refactoring tools.
+- More refactoring tools.
 
 ## Installation
 
@@ -90,9 +91,9 @@ autocmd FileType python call MyCustomHighlights()
 
 ## Usage
 
-Once installed, Semshi automatically parses and highlights code in any open file with a `.py` extension. With every change to the buffer, the code is re-parsed and highlights are updated. When moving the cursor above a name, all nodes with the same name in the same scope are highlighted, too. Semshi also attempts to compensate syntax errors as you type.
+Semshi automatically parses and highlights code in any open file with a `.py` extension. With every change to the buffer, the code is re-parsed and highlights are updated. When moving the cursor above a name, all nodes with the same name in the same scope are additionally marked. Semshi also attempts to tolerate syntax errors as you type.
 
-But bear in mind that static analysis is limited. For example, wildcard imports (`from foo import *`) and `eval` or `exec` calls can hide names which Semshi won't pick up or show as unresolved. Also, whenever a syntax error is present (which can't be automatically compensated), highlights can't be updated.
+But keep in mind that static analysis is limited. For example, features such as wildcard imports (`from foo import *`) and `eval` or `exec` calls can hide names which Semshi won't pick up or show as unresolved. Also, whenever a syntax error is present (which can't be automatically compensated), highlights can't be updated.
 
 
 ### Commands
@@ -103,6 +104,7 @@ The following commands can be executed via `:Semshi <command>`:
 | --- | --- |
 | `version` | Show version. |
 | `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
+| `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. Useful mapping: `nmap <silent> <leader>rr :Semshi rename<CR>`|
 
 
 ## FAQ
@@ -125,4 +127,4 @@ As you type code, you introduce temporary syntax errors, e.g. when opening a new
 
 ## Contributing
 
-I absolutely need your help with testing and improving Semshi. If you found a bug or have a suggestion, please don't hesitate to [file an issue](https://github.com/numirias/semshi/issues/new).
+I absolutely need your help with testing and improving Semshi. If you found a bug, have a suggestion, or just want to give usage feedback, please don't hesitate to [file an issue](https://github.com/numirias/semshi/issues/new).

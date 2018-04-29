@@ -36,3 +36,5 @@ let $SEMSHI_LOG_FILE = '/tmp/semshi.log'
 let $SEMSHI_LOG_LEVEL = 'DEBUG'
 
 let g:semshi#error_sign_delay = 0.5
+
+nmap <silent> <leader>rr :Semshi rename<CR>

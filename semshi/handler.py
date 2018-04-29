@@ -1,3 +1,4 @@
+from collections import defaultdict
 import threading
 
 from .parser import Parser, UnparsableError
@@ -14,8 +15,12 @@ class BufferHandler:
     The handler runs the parser, adds and removes highlights, keeps tracks of
     which highlights are visible and which ones need to be added or removed.
     """
-    def __init__(self, options, add_hls, clear_hls, code_func, cursor_func,
-                 place_sign, unplace_sign):
+    # TODO Don't pass required functions as params if we need to keep a
+    # reference to vim/plugin anyway.
+    def __init__(self, vim, buf, options, add_hls, clear_hls, code_func,
+                 cursor_func, place_sign, unplace_sign):
+        self._vim = vim
+        self._buf = buf
         self._add_hls = add_hls
         self._clear_hls = clear_hls
         self._get_code = code_func
@@ -55,7 +60,11 @@ class BufferHandler:
         Start a thread which reparses the code, update highlights.
         """
         if sync:
-            self._update_step(force=force, sync=True)
+            # TODO Unify with try-except in _update_loop
+            try:
+                self._update_step(force=force, sync=True)
+            except UnparsableError:
+                pass
             return
         thread = self._update_thread
         # If there is an active update thread...
@@ -190,6 +199,35 @@ class BufferHandler:
         if error is None:
             return
         self._place_sign(ERROR_SIGN_ID, error.lineno, 'semshiError')
+
+    def rename(self, cursor, new_name=None):
+        """Rename node at `cursor` to `new_name`."""
+        cur_node = self._parser.node_at(cursor)
+        if cur_node is None:
+            self._vim.out_write('Nothing to rename here.\n')
+            return
+        nodes = list(self._parser.same_nodes(cur_node, True))
+        num = len(nodes)
+        if new_name is None:
+            new_name = self._vim.eval('input("Rename %d nodes to: ")' % num)
+            # Can't output a carriage return via out_write()
+            self._vim.command('echo "\r"')
+        if not new_name or new_name == cur_node.name:
+            self._vim.out_write('Nothing renamed.\n')
+            return
+        lines = self._buf[:]
+        lines_to_nodes = defaultdict(list)
+        for node in nodes:
+            lines_to_nodes[node.lineno].append(node)
+        for lineno, nodes_in_line in lines_to_nodes.items():
+            offset = 0
+            line = lines[lineno - 1]
+            for node in sorted(nodes_in_line, key=lambda n: n.col):
+                line = (line[:node.col + offset] + new_name +
+                        line[node.col + len(node.name) + offset:])
+                offset += len(new_name) - len(node.name)
+            self._buf[lineno - 1] = line
+        self._vim.out_write('%d nodes renamed.\n' % num)
 
 
 def nodes_to_hl(nodes, clear=False, marked=False):

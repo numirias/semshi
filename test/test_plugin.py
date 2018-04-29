@@ -6,6 +6,7 @@ import pytest
 
 
 VIMRC = 'test/data/test.vimrc'
+SLEEP = 0.1
 
 
 @pytest.fixture(scope='session')
@@ -177,7 +178,8 @@ def test_option_no_default_builtin_highlight():
 
 def test_option_always_update_all_highlights():
     def ids():
-        return host_eval(vim, True)('[n.id for n in plugin._cur_handler._parser._nodes]')
+        time.sleep(SLEEP)
+        return host_eval(vim)('[n.id for n in plugin._cur_handler._parser._nodes]')
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa', 'aaa']
     old = ids()
@@ -228,10 +230,30 @@ def test_syntax_error_sign():
 def test_option_tolerate_syntax_errors():
     vim = start_vim(file='')
     vim.current.buffer[:] = ['a+']
-    num_nodes = host_eval(vim, True)('len(plugin._cur_handler._parser._nodes)')
+    time.sleep(SLEEP)
+    num_nodes = host_eval(vim)('len(plugin._cur_handler._parser._nodes)')
     assert num_nodes == 1
 
     vim = start_vim(['--cmd', 'let g:semshi#tolerate_syntax_errors = 0'], file='')
     vim.current.buffer[:] = ['a+']
-    num_nodes = host_eval(vim, True)('len(plugin._cur_handler._parser._nodes)')
+    time.sleep(SLEEP)
+    num_nodes = host_eval(vim)('len(plugin._cur_handler._parser._nodes)')
     assert num_nodes == 0
+
+
+def test_rename():
+    vim = start_vim(file='')
+    vim.current.buffer[:] = ['aaa, aaa, bbb', 'aaa']
+    wait_for_tick(vim)
+    time.sleep(SLEEP)
+    vim.command('Semshi rename xxyyzz')
+    time.sleep(SLEEP)
+    assert vim.current.buffer[:] == ['xxyyzz, xxyyzz, bbb', 'xxyyzz']
+    # The command blocks until an input is received, so we need to call async
+    # and sleep
+    time.sleep(SLEEP)
+    vim.command('Semshi rename', async=True)
+    time.sleep(SLEEP)
+    vim.feedkeys('CC\n')
+    time.sleep(SLEEP)
+    assert vim.current.buffer[:] == ['CC, CC, bbb', 'CC']
