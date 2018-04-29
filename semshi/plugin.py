@@ -92,12 +92,17 @@ class Plugin:
     def cmd_highlight(self):
         self._cur_handler.update(force=True, sync=True)
 
+    def cmd_rename(self, new_name=None):
+        self._cur_handler.rename(self._vim.current.window.cursor, new_name)
+
     def _switch_handler(self):
         buf = self._vim.current.buffer
         try:
             handler = self._handlers[buf]
         except KeyError:
             handler = BufferHandler(
+                self._vim,
+                buf,
                 self._options,
                 partial(self._add_highlights, buf),
                 partial(self._clear_highlights, buf),
