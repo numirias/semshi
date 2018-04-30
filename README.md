@@ -6,21 +6,25 @@
 
 Semshi provides semantic highlighting for Python in Neovim.
 
-Most syntax highlighters are regex-based and unaware of semantics. Semshi performs static analysis of Python code as you type. It asynchronously builds a syntax tree and symbol tables to understand the scopes of locals, globals, arguments etc. and highlight them differently. This makes code easier to read and lets you quickly detect missing imports, unused arguments or misspelled names.
+As opposed to regex-based syntax highlighters, Semshi performs actual static analysis of Python code as you type. It builds a syntax tree and symbol tables to highlight names based on their scope and context. This makes code easier to read and lets you quickly identify missing imports, unused arguments, misspelled names and more.
 
 | With Semshi | Without Semshi |
 | --- | --- |
 | ![After](https://i.imgur.com/QUnGdU8.png) | ![Before](https://i.imgur.com/eiD1Miz.png) |
 
-In above example, you can easily distinguish arguments (blue), globals (orange), instance attributes (teal), etc., and the unresolved names (yellow underlined) are obvious. Also, Semshi detects that first `list` is assigned locally, while the default highlighter still shows it as builtin.
+In above example, you can easily distinguish arguments (blue), instance attributes (teal), globals (orange), unresolved globals (yellow underlined), etc. Also, Semshi understands that the first `list` is assigned locally, while the default highlighter still shows it as builtin.
 
 ## Features
 
-- Different highlighting of locals, globals, imports, function parameters, builtins, attributes, arguments, free and unresolved names.
-- Highlighting of all currently selected nodes.
+- Different highlighting of locals, globals, imports, used and unused function parameters, builtins, attributes, free and unresolved names.
+
+- Scope-aware marking and renaming of related nodes.
+
+  ![Renaming](https://i.imgur.com/5zWRFyg.gif)
+
 - Indication of syntax errors.
-- Highlighting of unused arguments.
-- Scope-aware renaming of nodes.
+
+  ![Syntax errors](https://i.imgur.com/tCj9myJ.gif)
 
 **TODO:**
 - More refactoring tools.
@@ -37,7 +41,7 @@ In above example, you can easily distinguish arguments (blue), globals (orange),
       
   ...and run `:PlugInstall`.
 
-- You may also need to run `:UpdateRemotePlugins` to update the plugin manifest.
+- You may also need to run `:UpdateRemotePlugins` manually to update the plugin manifest.
 
 - (If you insist on manual installation, download the source and place it in a directory in your Vim runtime path.)
 
