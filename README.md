@@ -10,7 +10,7 @@ As opposed to regex-based syntax highlighters, Semshi performs actual static ana
 
 | With Semshi | Without Semshi |
 | --- | --- |
-| ![After](https://i.imgur.com/QUnGdU8.png) | ![Before](https://i.imgur.com/eiD1Miz.png) |
+| ![After](https://i.imgur.com/rDBSM8s.png) | ![Before](https://i.imgur.com/t40TNZ6.png) |
 
 In above example, you can easily distinguish arguments (blue), instance attributes (teal), globals (orange), unresolved globals (yellow underlined), etc. Also, Semshi understands that the first `list` is assigned locally, while the default highlighter still shows it as builtin.
 
@@ -95,9 +95,7 @@ autocmd FileType python call MyCustomHighlights()
 
 ## Usage
 
-Semshi automatically parses and highlights code in any open file with a `.py` extension. With every change to the buffer, the code is re-parsed and highlights are updated. When moving the cursor above a name, all nodes with the same name in the same scope are additionally marked. Semshi also attempts to tolerate syntax errors as you type.
-
-But keep in mind that static analysis is limited. For example, features such as wildcard imports (`from foo import *`) and `eval` or `exec` calls can hide names which Semshi won't pick up or show as unresolved. Also, whenever a syntax error is present (which can't be automatically compensated), highlights can't be updated.
+Semshi parses and highlights code in all files with a `.py` extension. With every change to the buffer, the code is re-parsed and highlights are updated. When moving the cursor above a name, all nodes with the same name in the same scope are additionally marked. Semshi also attempts to tolerate syntax errors as you type.
 
 
 ### Commands
@@ -110,6 +108,14 @@ The following commands can be executed via `:Semshi <command>`:
 | `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
 | `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. Useful mapping: `nmap <silent> <leader>rr :Semshi rename<CR>`|
 
+## Limitations
+
+- Some features such as wildcard imports (`from foo import *`) and fancy metaprogramming may hide names which Semshi won't pick up and may show as unresolved or highlight incorrectly.
+
+- Whenever a syntax error is present (which can't be automatically compensated), highlights can't be updated. So you may experience that highlights are temporarily incorrect while typing.
+
+- Although Semshi does its work asynchronously and is not *that* slow, editing large files may stress your CPU and cause delayed highlighting.
+
 
 ## FAQ
 
@@ -121,7 +127,7 @@ No. Semshi relies on Neovim's fast highlighting API to update highlights quickly
 
 No. Currently, support for Python < 3.5 isn't planned. Migrate your code already!
 
-### There are some annoying extra highlights.
+### There are some annoying (incorrect) extra highlights.
 
 You might be using other Python syntax highlighters alongside (such as [python-syntax](https://github.com/vim-python/python-syntax)) which may interfere with Semshi. Try to disable these plugins if they cause problems.
 
