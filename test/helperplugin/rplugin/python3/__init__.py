@@ -2,8 +2,6 @@ import gc
 
 import neovim
 
-from semshi.plugin import Plugin
-
 
 @neovim.plugin
 class TestHelperPlugin:
@@ -18,6 +16,8 @@ class TestHelperPlugin:
     @neovim.autocmd('VimEnter', pattern='*', sync=True)
     def event_vim_enter(self):
         """Find and retain the plugin instance."""
+        # Don't import semshi on top so it's not collected as a plugin again
+        from semshi.plugin import Plugin
         # Using the garbage collector interface to find the instance is a bit
         # hacky, but works reasonably well and doesn't require changes to the
         # plugin code itself.

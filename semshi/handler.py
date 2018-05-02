@@ -229,6 +229,27 @@ class BufferHandler:
             self._buf[lineno - 1] = line
         self._vim.out_write('%d nodes renamed.\n' % num)
 
+    def next_location(self, kind, location, reverse=False):
+        """Return the location of the next node after node at `location`.
+        """
+        from ast import ClassDef, FunctionDef, AsyncFunctionDef
+        if kind == 'name':
+            cur_node = self._parser.node_at(location)
+            if cur_node is None:
+                raise ValueError('No node at cursor.')
+            target = cur_node.target
+            if target is not None:
+                cur_node = target
+            locs = [n.pos for n in self._parser.same_nodes(cur_node,
+                                                           use_target=False)]
+        elif kind == 'class':
+            locs = self._parser.locations([ClassDef])
+        elif kind == 'function':
+            locs = self._parser.locations([FunctionDef, AsyncFunctionDef])
+        else:
+            raise ValueError('"%s" is not a recognized element type.' % kind)
+        return next_location(tuple(location), locs, reverse)
+
 
 def nodes_to_hl(nodes, clear=False, marked=False):
     """Convert list of nodes to highlight tuples which are the arguments to
@@ -241,3 +262,11 @@ def nodes_to_hl(nodes, clear=False, marked=False):
         id = Node.MARK_ID
         return [(id, SELECTED, n.lineno - 1, n.col, n.end) for n in nodes]
     return [(n.id, n.hl_group, n.lineno - 1, n.col, n.end) for n in nodes]
+
+
+def next_location(here, all, reverse=False):
+    """Return the location from `all` that comes after `here`."""
+    if here not in all:
+        all.append(here)
+    all = sorted(all)
+    return all[(all.index(here) + (-1 if reverse else 1)) % len(all)]

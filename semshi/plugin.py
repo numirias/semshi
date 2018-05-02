@@ -95,6 +95,23 @@ class Plugin:
     def cmd_rename(self, new_name=None):
         self._cur_handler.rename(self._vim.current.window.cursor, new_name)
 
+    def cmd_goto(self, kind, direction):
+        try:
+            location = self._cur_handler.next_location(
+                kind,
+                self._vim.current.window.cursor,
+                reverse=(direction == 'prev'),
+            )
+        except ValueError:
+            # Raised if no node at location
+            return
+        try:
+            self._vim.current.window.cursor = location
+        except neovim.api.nvim.NvimError:
+            # This can happen when the new cursor position is outside the
+            # buffer because the code couldn't be re-parsed.
+            pass
+
     def _switch_handler(self):
         buf = self._vim.current.buffer
         try:

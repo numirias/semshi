@@ -273,16 +273,17 @@ class Parser:
         return None
 
     # pylint: disable=method-hidden
-    def same_nodes(self, cur_node, mark_original=True):
+    def same_nodes(self, cur_node, mark_original=True, use_target=True):
         """Return nodes with the same scope as cur_node.
 
         The same scope is to be understood as all nodes with the same base
         symtable. In some cases this can be ambiguous.
         """
         # TODO Make this an option
-        target = cur_node.target
-        if target is not None:
-            cur_node = target
+        if use_target:
+            target = cur_node.target
+            if target is not None:
+                cur_node = target
         cur_name = cur_node.name
         base_table = cur_node.base_table()
         for node in self._nodes:
@@ -299,3 +300,23 @@ class Parser:
         if cur_node is None:
             return []
         return self.same_nodes(cur_node, mark_original)
+
+    def locations(self, types):
+        visitor = _LocationCollectionVisitor(types)
+        # TODO Parsing the AST for every location determination is expensive
+        ast_root = ast.parse('\n'.join(self._lines))
+        visitor.visit(ast_root)
+        return visitor.locations
+
+
+class _LocationCollectionVisitor(ast.NodeVisitor):
+    """Node vistor which collects the locations of all AST nodes of a given
+    type."""
+    def __init__(self, types):
+        self._types = types
+        self.locations = []
+
+    def visit(self, node):
+        if type(node) in self._types: # pylint: disable=unidiomatic-typecheck
+            self.locations.append((node.lineno, node.col_offset))
+        return self.generic_visit(node)

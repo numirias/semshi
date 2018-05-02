@@ -38,3 +38,11 @@ let $SEMSHI_LOG_LEVEL = 'DEBUG'
 let g:semshi#error_sign_delay = 0.5
 
 nmap <silent> <leader>rr :Semshi rename<CR>
+nmap <silent> <Tab> :Semshi goto name next<CR>
+nmap <silent> <S-Tab> :Semshi goto name prev<CR>
+
+nmap <silent> <C-n> :Semshi goto class next<CR>
+nmap <silent> <C-p> :Semshi goto class prev<CR>
+
+nmap <silent> <C-a> :Semshi goto function next<CR>
+nmap <silent> <C-x> :Semshi goto function prev<CR>

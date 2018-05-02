@@ -42,11 +42,15 @@ def start_vim(argv=None, file=None):
     return vim
 
 
-def wait_for(func, cond, sleep=.001, tries=1000):
+def wait_for(func, cond=None, sleep=.001, tries=1000):
     for _ in range(tries):
         res = func()
-        if cond(res):
-            return res
+        if cond is None:
+            if res:
+                return
+        else:
+            if cond(res):
+                return res
         time.sleep(sleep)
     raise TimeoutError()
 
@@ -257,3 +261,23 @@ def test_rename():
     vim.feedkeys('CC\n')
     time.sleep(SLEEP)
     assert vim.current.buffer[:] == ['CC, CC, bbb', 'CC']
+
+
+def test_walk_names():
+    vim = start_vim(file='')
+    vim.current.buffer[:] = ['aaa, aaa, aaa']
+    wait_for_tick(vim)
+    vim.command('Semshi goto name next')
+    wait_for(lambda: vim.current.window.cursor == [1, 5])
+    time.sleep(SLEEP)
+    vim.command('Semshi goto name next')
+    wait_for(lambda: vim.current.window.cursor == [1, 10])
+    time.sleep(SLEEP)
+    vim.command('Semshi goto name next')
+    wait_for(lambda: vim.current.window.cursor == [1, 0])
+    time.sleep(SLEEP)
+    vim.command('Semshi goto name prev')
+    wait_for(lambda: vim.current.window.cursor == [1, 10])
+    time.sleep(SLEEP)
+    vim.command('Semshi goto name prev')
+    wait_for(lambda: vim.current.window.cursor == [1, 5])

@@ -620,6 +620,21 @@ def test_same_nodes_empty():
     assert parser.same_nodes((1, 0)) == []
 
 
+def test_same_nodes_use_target():
+    parser = make_parser('''
+    class Foo:
+        def foo(self):
+            self.x, self.x
+    ''')
+    node = parser._nodes[-1]
+    assert [
+        n.name for n in list(parser.same_nodes(node, use_target=True))
+    ] == ['x', 'x']
+    assert [
+        n.name for n in list(parser.same_nodes(node, use_target=False))
+    ] == ['self', 'self', 'self']
+
+
 def test_refresh_names():
     """Clear everything if more than one line changes."""
     parser = Parser()
