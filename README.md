@@ -26,9 +26,6 @@ In above example, you can easily distinguish arguments (blue), instance attribut
 
   ![Syntax errors](https://i.imgur.com/tCj9myJ.gif)
 
-**TODO:**
-- More refactoring tools.
-
 ## Installation
 
 - You need Neovim with Python 3 support (`:echo has("python3")`). To install the Python provider run:
@@ -106,7 +103,23 @@ The following commands can be executed via `:Semshi <command>`:
 | --- | --- |
 | `version` | Show version. |
 | `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
-| `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. Useful mapping: `nmap <silent> <leader>rr :Semshi rename<CR>`|
+| `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. |
+| `goto ("name"\|"function"\|"class") ("next"\|"prev")` | Jump to next/previous name/function/class. (See below for sample mappings.) |
+
+Here are some possible mappings:
+
+```VimL
+nmap <silent> <leader>rr :Semshi rename<CR>
+
+nmap <silent> <Tab> :Semshi goto name next<CR>
+nmap <silent> <S-Tab> :Semshi goto name prev<CR>
+
+nmap <silent> <leader>c :Semshi goto class next<CR>
+nmap <silent> <leader>C :Semshi goto class prev<CR>
+
+nmap <silent> <leader>f :Semshi goto function next<CR>
+nmap <silent> <leader>F :Semshi goto function prev<CR>
+```
 
 ## Limitations
 
@@ -127,7 +140,7 @@ No. Semshi relies on Neovim's fast highlighting API to update highlights quickly
 
 No. Currently, support for Python < 3.5 isn't planned. Migrate your code already!
 
-### There are some annoying (incorrect) extra highlights.
+### There are some incorrect extra highlights.
 
 You might be using other Python syntax highlighters alongside (such as [python-syntax](https://github.com/vim-python/python-syntax)) which may interfere with Semshi. Try to disable these plugins if they cause problems.
 
