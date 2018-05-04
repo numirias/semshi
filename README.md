@@ -26,6 +26,8 @@ In above example, you can easily distinguish arguments (blue), instance attribut
 
   ![Syntax errors](https://i.imgur.com/tCj9myJ.gif)
 
+- Jumping between classes, functions and associated names.
+
 ## Installation
 
 - You need Neovim with Python 3 support (`:echo has("python3")`). To install the Python provider run:

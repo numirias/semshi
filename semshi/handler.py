@@ -15,18 +15,11 @@ class BufferHandler:
     The handler runs the parser, adds and removes highlights, keeps tracks of
     which highlights are visible and which ones need to be added or removed.
     """
-    # TODO Don't pass required functions as params if we need to keep a
-    # reference to vim/plugin anyway.
-    def __init__(self, vim, buf, options, add_hls, clear_hls, code_func,
-                 cursor_func, place_sign, unplace_sign):
-        self._vim = vim
+    def __init__(self, buf, vim, options):
         self._buf = buf
-        self._add_hls = add_hls
-        self._clear_hls = clear_hls
-        self._get_code = code_func
-        self._get_cursor = cursor_func
-        self._place_sign = place_sign
-        self._unplace_sign = unplace_sign
+        self._vim = vim
+        self._options = options
+        self._buf_num = buf.number
         self._parser = Parser(options.excluded_hl_groups,
                               options.tolerate_syntax_errors)
         self._scheduled = False
@@ -40,7 +33,6 @@ class BufferHandler:
         # Nodes which are currently marked as a selected. We keep track of them
         # to check if they haven't changed between updates.
         self._selected_nodes = []
-        self._options = options
 
     def viewport(self, start, stop):
         """Set viewport to line range from `start` to `stop` and add highlights
@@ -97,13 +89,28 @@ class BufferHandler:
         self._clear_hls(nodes_to_hl(nodes, clear=True, marked=True))
         self._add_hls(nodes_to_hl(nodes, marked=True))
 
-    @debug_time
-    def _add_visible_hls(self):
-        """Add highlights in the current viewport which have not been applied
-        yet."""
-        visible, hidden = self._visible_and_hidden(self._pending_nodes)
-        self._add_hls(nodes_to_hl(visible))
-        self._pending_nodes = hidden
+    def _cursor(self, sync):
+        func = lambda: self._vim.current.window.cursor
+        return func() if sync else self._wait_for(func)
+
+    def _code(self, sync):
+        func = lambda: '\n'.join(self._buf[:])
+        return func() if sync else self._wait_for(func)
+
+    def _wait_for(self, func):
+        """Run `func` in async context, block until done and return result.
+
+        Needed when an async event handler needs the result of an API call.
+        """
+        event = threading.Event()
+        res = None
+        def wrapper():
+            nonlocal res
+            res = func()
+            event.set()
+        self._vim.async_call(wrapper)
+        event.wait()
+        return res
 
     def _update_loop(self):
         try:
@@ -128,8 +135,7 @@ class BufferHandler:
 
     @debug_time
     def _update_step(self, force=False, sync=False):
-        code = self._get_code(sync)
-        add, rem = self._parser.parse(code, force)
+        add, rem = self._parser.parse(self._code(sync), force)
         # TODO If we force update, can't we just clear all pending?
         # Remove nodes to be cleared from pending list
         rem_remaining = debug_time('remove from pending')(
@@ -140,8 +146,15 @@ class BufferHandler:
         # Update highlights by adding all new visible nodes and removing all
         # old nodes which have been drawn earlier
         self._update_hls(add_visible, rem_remaining)
-        cursor = self._get_cursor(sync)
-        self.mark_selected(cursor)
+        self.mark_selected(self._cursor(sync))
+
+    @debug_time
+    def _add_visible_hls(self):
+        """Add highlights in the current viewport which have not been applied
+        yet."""
+        visible, hidden = self._visible_and_hidden(self._pending_nodes)
+        self._add_hls(nodes_to_hl(visible))
+        self._pending_nodes = hidden
 
     def _visible_and_hidden(self, nodes):
         """Bisect nodes into visible and hidden ones."""
@@ -169,11 +182,6 @@ class BufferHandler:
                 # instead of creating it here?
                 yield node
 
-    @debug_time(None, lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
-    def _update_hls(self, add, clear):
-        self._add_hls(nodes_to_hl(add))
-        self._clear_hls(nodes_to_hl(clear, clear=True))
-
     def _schedule_update_error_sign(self):
         if self._error_timer is not None:
             self._error_timer.cancel()
@@ -200,8 +208,53 @@ class BufferHandler:
             return
         self._place_sign(ERROR_SIGN_ID, error.lineno, 'semshiError')
 
+    def _place_sign(self, id, line, name):
+        self._vim.command('sign place %d line=%d name=%s buffer=%d' %
+                          (id, line, name, self._buf_num), async=True)
+
+    def _unplace_sign(self, id):
+        self._vim.command('sign unplace %d buffer=%d' %
+                          (id, self._buf_num), async=True)
+
+    @debug_time(None, lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
+    def _update_hls(self, add, clear):
+        self._add_hls(nodes_to_hl(add))
+        self._clear_hls(nodes_to_hl(clear, clear=True))
+
+    @debug_time(None, lambda _, nodes: '%d nodes' % len(nodes))
+    def _add_hls(self, node_or_nodes):
+        buf = self._buf
+        if not node_or_nodes:
+            return
+        if not isinstance(node_or_nodes, list):
+            buf.add_highlight(*node_or_nodes)
+            return
+        self._call_atomic_async(
+            [('nvim_buf_add_highlight', (buf, *n)) for n in node_or_nodes])
+
+    @debug_time(None, lambda _, nodes: '%d nodes' % len(nodes))
+    def _clear_hls(self, node_or_nodes):
+        buf = self._buf
+        if not node_or_nodes:
+            return
+        if not isinstance(node_or_nodes, list):
+            buf.clear_highlight(*node_or_nodes)
+            return
+        # Don't specify line range to clear explicitly because we can't
+        # reliably determine the correct range
+        self._call_atomic_async(
+            [('nvim_buf_clear_highlight', (buf, *n)) for n in node_or_nodes])
+
+    def _call_atomic_async(self, calls):
+        # Need to update in small batches to avoid
+        # https://github.com/neovim/python-client/issues/310
+        batch_size = 3000
+        for i in range(0, len(calls), batch_size):
+            self._vim.api.call_atomic(calls[i:i + batch_size], async=True)
+
     def rename(self, cursor, new_name=None):
-        """Rename node at `cursor` to `new_name`."""
+        """Rename node at `cursor` to `new_name`. If `new_name` is None, prompt
+        for new name."""
         cur_node = self._parser.node_at(cursor)
         if cur_node is None:
             self._vim.out_write('Nothing to rename here.\n')

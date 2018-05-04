@@ -1,11 +1,9 @@
-from functools import partial, wraps
-import threading
+from functools import wraps
 
 import neovim
 
 from .handler import BufferHandler
 from .node import groups
-from .util import debug_time
 
 
 def if_active(func):
@@ -117,17 +115,7 @@ class Plugin:
         try:
             handler = self._handlers[buf]
         except KeyError:
-            handler = BufferHandler(
-                self._vim,
-                buf,
-                self._options,
-                partial(self._add_highlights, buf),
-                partial(self._clear_highlights, buf),
-                partial(self._code, buf),
-                self._cursor,
-                partial(self._place_sign, buf.number),
-                partial(self._unplace_sign, buf.number),
-            )
+            handler = BufferHandler(buf, self._vim, self._options)
             self._handlers[buf] = handler
         self._cur_handler = handler
 
@@ -140,66 +128,6 @@ class Plugin:
         if not self._options.mark_selected_nodes:
             return
         self._cur_handler.mark_selected(self._vim.current.window.cursor)
-
-    def _cursor(self, sync):
-        func = lambda: self._vim.current.window.cursor
-        return func() if sync else self._wait_for(func)
-
-    def _code(self, buf, sync):
-        func = lambda: '\n'.join(buf[:])
-        return func() if sync else self._wait_for(func)
-
-    def _wait_for(self, func):
-        """Run `func` in async context, block until done and return result.
-
-        Needed when an async event handler needs the result of an API call.
-        """
-        event = threading.Event()
-        res = None
-        def wrapper():
-            nonlocal res
-            res = func()
-            event.set()
-        self._vim.async_call(wrapper)
-        event.wait()
-        return res
-
-    @debug_time(None, lambda _, __, nodes: '%d nodes' % len(nodes))
-    def _add_highlights(self, buf, node_or_nodes):
-        if not node_or_nodes:
-            return
-        if not isinstance(node_or_nodes, list):
-            buf.add_highlight(*node_or_nodes)
-            return
-        self._call_atomic_async(
-            [('nvim_buf_add_highlight', (buf, *n)) for n in node_or_nodes])
-
-    @debug_time(None, lambda _, __, nodes: '%d nodes' % len(nodes))
-    def _clear_highlights(self, buf, node_or_nodes):
-        if not node_or_nodes:
-            return
-        if not isinstance(node_or_nodes, list):
-            buf.clear_highlight(*node_or_nodes)
-            return
-        # Don't specify line range to clear explicitly because we can't
-        # reliably determine the correct range
-        self._call_atomic_async(
-            [('nvim_buf_clear_highlight', (buf, *n)) for n in node_or_nodes])
-
-    def _call_atomic_async(self, calls):
-        # Need to update in small batches to avoid
-        # https://github.com/neovim/python-client/issues/310
-        batch_size = 3000
-        for i in range(0, len(calls), batch_size):
-            self._vim.api.call_atomic(calls[i:i + batch_size], async=True)
-
-    def _place_sign(self, buffer_num, id, line, name):
-        self._vim.command('sign place %d line=%d name=%s buffer=%d' %
-                          (id, line, name, buffer_num), async=True)
-
-    def _unplace_sign(self, buffer_num, id):
-        self._vim.command('sign unplace %d buffer=%d' %
-                          (id, buffer_num), async=True)
 
 
 class Options:
