@@ -50,6 +50,10 @@ if !exists('g:semshi#tolerate_syntax_errors')
     let g:semshi#tolerate_syntax_errors = 1
 endif
 
+if !exists('g:semshi#update_delay_factor')
+    let g:semshi#update_delay_factor = 0
+endif
+
 function! s:remove_builtin_extra()
     syn keyword pythonKeyword True False None
     hi link pythonKeyword pythonNumber

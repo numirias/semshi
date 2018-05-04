@@ -1,5 +1,6 @@
 from collections import defaultdict
 import threading
+import time
 
 from .parser import Parser, UnparsableError
 from .util import logger, debug_time
@@ -135,6 +136,9 @@ class BufferHandler:
 
     @debug_time
     def _update_step(self, force=False, sync=False):
+        factor = self._options.update_delay_factor
+        if factor > 0:
+            time.sleep(factor * len(self._parser.lines))
         add, rem = self._parser.parse(self._code(sync), force)
         # TODO If we force update, can't we just clear all pending?
         # Remove nodes to be cleared from pending list

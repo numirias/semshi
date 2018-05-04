@@ -167,3 +167,6 @@ class Options:
 
     def _option_tolerate_syntax_errors(self):
         return bool(self._option('tolerate_syntax_errors'))
+
+    def _option_update_delay_factor(self):
+        return self._option('update_delay_factor')

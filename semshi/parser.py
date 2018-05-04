@@ -22,8 +22,8 @@ class Parser:
     def __init__(self, exclude=None, fix_syntax=True):
         self._excluded = exclude or []
         self._fix_syntax = fix_syntax
-        self._lines = []
         self._nodes = []
+        self.lines = []
         # Incremented after every parse call
         self.tick = 0
         # Holds the SyntaxError exception of the current run
@@ -60,7 +60,7 @@ class Parser:
 
         Return tuple (add, remove) of added and removed nodes since last run.
         """
-        old_lines = self._lines
+        old_lines = self.lines
         new_lines = code.split('\n')
         change_lineno = self._minor_change(old_lines, new_lines)
         # TODO Make exception handling clearer
@@ -74,7 +74,7 @@ class Parser:
             add, rem = new_nodes, self._nodes
             self._nodes = add
         # Only assign new lines when nodes have been updates accordingly
-        self._lines = new_lines
+        self.lines = new_lines
         logger.debug('[%d] nodes: +%d,  -%d', self.tick, len(add), len(rem))
         return (self._filter_excluded(add), self._filter_excluded(rem))
 
@@ -304,7 +304,7 @@ class Parser:
     def locations(self, types):
         visitor = _LocationCollectionVisitor(types)
         # TODO Parsing the AST for every location determination is expensive
-        ast_root = ast.parse('\n'.join(self._lines))
+        ast_root = ast.parse('\n'.join(self.lines))
         visitor.visit(ast_root)
         return visitor.locations
 

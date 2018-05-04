@@ -26,7 +26,7 @@ In above example, you can easily distinguish arguments (blue), instance attribut
 
   ![Syntax errors](https://i.imgur.com/tCj9myJ.gif)
 
-- Jumping between classes, functions and associated names.
+- Jumping between classes, functions and related names.
 
 ## Installation
 
@@ -62,6 +62,7 @@ You can set these options in your vimrc (`~/.config/nvim/init.vim`):
 | `g:semshi#error_sign_delay` | `1.5` | Delay in seconds until the syntax error sign is displayed. (A low delay time may distract while typing.) |
 | `g:semshi#always_update_all_highlights` | `0` | Update all visible highlights for every change. (Semshi tries to detect small changes and update only changed highlights. This can lead to some missing highlights. Turn this on for more reliable highlighting, but a small additional overhead.) |
 | `g:semshi#tolerate_syntax_errors` | `1` | Tolerate some minor syntax errors to update highlights even when the syntax is (temporarily) incorrect. (Smoother experience, but comes with some overhead.) |
+| `g:semshi#update_delay_factor` | `0.0` | Factor to delay updating of highlights. Updates will be delayed by `factor * number of lines` seconds. This is useful if instant re-parsing while editing large files stresses your CPU too much. A good starting point may be a factor of `0.0001` (that is, in a file with 1000 lines parsing will be delayed by 0.1 seconds). |
 
 ### Highlights
 

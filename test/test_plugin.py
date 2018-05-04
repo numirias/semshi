@@ -245,6 +245,15 @@ def test_option_tolerate_syntax_errors():
     assert num_nodes == 0
 
 
+def test_option_update_delay_factor():
+    vim = start_vim(['--cmd', 'let g:semshi#update_delay_factor = 2'], file='')
+    time.sleep(SLEEP)
+    vim.current.buffer[:] = ['foo']
+    time.sleep(SLEEP)
+    num_nodes = host_eval(vim)('len(plugin._cur_handler._parser._nodes)')
+    assert num_nodes == 0
+
+
 def test_rename():
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa, aaa, bbb', 'aaa']
