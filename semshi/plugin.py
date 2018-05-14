@@ -15,6 +15,12 @@ def if_active(func):
         func(self)
     return wrapper
 
+_subcommands = {}
+
+def subcommand(func):
+    _subcommands[func.__name__] = func
+    return func
+
 
 @neovim.plugin
 class Plugin:
@@ -72,28 +78,39 @@ class Plugin:
     def event_text_changed_insert(self):
         self._cur_handler.update()
 
-    @neovim.command('Semshi', nargs='*', sync=True)
+    @neovim.command('Semshi', nargs='*', complete='customlist,SemshiComplete',
+                    sync=True)
     def cmd_semshi(self, args):
         if not args:
             self._vim.out_write('This is semshi.\n')
             return
         try:
-            func = getattr(self, 'cmd_%s' % args[0])
-        except AttributeError:
-            self._vim.err_write('Sub command not found: %s\n' % args[0])
+            func = _subcommands[args[0]]
+        except KeyError:
+            self._vim.err_write('Subcommand not found: %s\n' % args[0])
             return
-        func(*args[1:])
+        func(self, *args[1:])
 
-    def cmd_version(self):
+    @staticmethod
+    @neovim.function('SemshiComplete', sync=True)
+    def func_complete(arg):
+        lead, *_ = arg
+        return [c for c in _subcommands if c.startswith(lead)]
+
+    @subcommand
+    def version(self):
         self._vim.out_write('semshi v0.0\n')
 
-    def cmd_highlight(self):
+    @subcommand
+    def highlight(self):
         self._cur_handler.update(force=True, sync=True)
 
-    def cmd_rename(self, new_name=None):
+    @subcommand
+    def rename(self, new_name=None):
         self._cur_handler.rename(self._vim.current.window.cursor, new_name)
 
-    def cmd_goto(self, kind, direction):
+    @subcommand
+    def goto(self, kind, direction):
         try:
             location = self._cur_handler.next_location(
                 kind,
