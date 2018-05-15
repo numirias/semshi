@@ -1,7 +1,7 @@
 import os
 from textwrap import dedent
 import pytest
-from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAMETER, PARAMETER_UNUSED, BUILTIN, GLOBAL, LOCAL, IMPORTED
+from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAMETER, PARAMETER_UNUSED, BUILTIN, GLOBAL, LOCAL, IMPORTED, ATTRIBUTE
 from semshi.parser import Parser, UnparsableError
 from semshi import parser
 
@@ -603,7 +603,7 @@ def test_attributes():
             self.gg
     ''')
     names = parser._nodes
-    names = [n for n in names if n.is_attr]
+    names = [n for n in names if n.hl_group == ATTRIBUTE]
     b_gg, c_gg, d_gg, e_hh = names
     same_nodes = set(parser.same_nodes(c_gg))
     assert same_nodes == {c_gg, d_gg}

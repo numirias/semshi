@@ -198,7 +198,7 @@ class Parser:
         """Determine whether a minor change between old and new lines occurred.
         Return (`minor_change`, `change_lineno`) where `minor_change` is True
         when at most one change occurred and `change_lineno` is the line number
-        of the change. 
+        of the change.
 
         A minor change is a change in a single line while the total number of
         lines doesn't change.

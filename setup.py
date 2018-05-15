@@ -1,10 +1,10 @@
-# TODO Remove setup?
 from setuptools import setup
 
-
+# The setup is currently only used for tests. See the README for installation
+# instructions in Neovim.
 setup(
     name='semshi',
-    description='Semantic Highlighting for Python',
+    description='Semantic Highlighting for Python in Neovim',
     packages=['semshi'],
     author='numirias',
     author_email='numirias@users.noreply.github.com',
@@ -17,7 +17,7 @@ setup(
         'neovim',
     ],
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',

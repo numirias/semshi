@@ -7,7 +7,7 @@ from itertools import count
 from token import NAME, OP
 from tokenize import tokenize
 
-from .node import Node, PARAMETER_UNUSED, SELF
+from .node import Node, PARAMETER_UNUSED, SELF, ATTRIBUTE, IMPORTED
 from .util import debug_time
 
 
@@ -116,13 +116,17 @@ class Visitor:
             self._iter_node(node)
 
     def _new_name(self, node):
-        # Using __dict__.get() is faster than getattr()
-        target = node.__dict__.get('self_target')
-        self.nodes.append(Node(node.id, node.lineno, node.col_offset,
-                               self._cur_env, None, target)) # TODO why None?
+        self.nodes.append(Node(
+            node.id,
+            node.lineno,
+            node.col_offset,
+            self._cur_env,
+            # Using __dict__.get() is faster than getattr()
+            node.__dict__.get('_target'),
+        ))
 
     def _visit_arg(self, node):
-        """Visit argument."""
+        """Visit function argument."""
         node = Node(node.arg, node.lineno, node.col_offset, self._cur_env)
         self.nodes.append(node)
         # Register as unused parameter for now. The entry is removed if it's
@@ -180,8 +184,29 @@ class Visitor:
         using the tokenize module is slow, we only use it where absolutely
         necessary.
         """
-        # TODO Skip tokenization for simple imports?
         line_idx = node.lineno - 1
+        # We first try to guess the import line to avoid having to use the
+        # tokenizer. This will fail in some cases as we just cover the most
+        # common import syntax.
+        name = node.names[0].name
+        asname = node.names[0].asname
+        target = asname or name
+        if target != '*' and '.' not in target:
+            guess = 'import ' + name + (' as ' + asname if asname else '')
+            if type(node) == ImportFrom:
+                guess = 'from ' + (node.module or node.level * '.') + ' ' + \
+                        guess
+            if self._lines[line_idx] == guess:
+                self.nodes.append(Node(
+                    target,
+                    node.lineno,
+                    len(guess.encode('utf-8')) - len(target.encode('utf-8')),
+                    self._cur_env,
+                    None,
+                    IMPORTED,
+                ))
+                return
+        # Guessing the line failed, so we need to use the tokenizer
         tokens = tokenize_lines(self._lines[i] for i in count(line_idx))
         while True:
             # Advance to next "import" keyword
@@ -195,7 +220,7 @@ class Visitor:
                 break
         for alias, more in zip(node.names, count(1 - len(node.names))):
             if alias.name == '*':
-                continue # TODO Handle wildcard imports
+                continue
             # If it's an "as" alias import...
             if alias.asname is not None:
                 # ...advance to "as" keyword.
@@ -208,6 +233,8 @@ class Visitor:
                 # Exact byte offset of the token
                 len(cur_line[:token.start[1]].encode('utf-8')),
                 self._cur_env,
+                None,
+                IMPORTED,
             ))
             # If there are more imports in that import statement...
             if more:
@@ -254,7 +281,7 @@ class Visitor:
         except IndexError:
             return
         # ...with a special name...
-        if arg.arg not in ['self', 'cls']:
+        if arg.arg not in ('self', 'cls'):
             return
         # ...and a class as parent scope is a self_param.
         if not self._env[-1].get_type() == 'class':
@@ -268,22 +295,25 @@ class Visitor:
         The only relevant attributes are attributes to self or cls in a
         method (e.g. "self._name").
         """
-        # TODO this doesn't check if we're inside a class
-        # Only attributes of names matter. (foo.attr, but not [].attr)
+        # Node must be an attribute of a name (foo.attr, but not [].attr)
         if type(node.value) is not Name:
             return
-        if node.value.id not in ('self', 'cls'):
+        target_name = node.value.id
+        # Redundant, but may spare us the getattr() call in the next step
+        if target_name not in ('self', 'cls'):
             return
-        if node.value.id != getattr(self._env[-1], 'self_param', None):
+        # Only register attributes of self/cls parameter
+        if target_name != getattr(self._env[-1], 'self_param', None):
             return
         new_node = Node(
             node.attr,
             node.value.lineno,
-            node.value.col_offset + len(node.value.id) + 1,
+            node.value.col_offset + len(target_name) + 1,
             self._env[:-1],
-            True,
+            None, # target
+            ATTRIBUTE,
         )
-        node.value.self_target = new_node # TODO
+        node.value._target = new_node # pylint: disable=protected-access
         self.nodes.append(new_node)
 
     def _iter_node(self, node):
