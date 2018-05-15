@@ -791,7 +791,7 @@ def test_diff():
 def test_minor_change():
     def minor_change(c1, c2):
         return Parser._minor_change(c1, c2)
-    assert minor_change(list('abc'), list('axc')) == 1
-    assert minor_change(list('abc'), list('xbx')) == -1
-    assert minor_change(list('abc'), list('abcedf')) == -1
-    assert minor_change(list('abc'), list('abc')) is None
+    assert minor_change(list('abc'), list('axc')) == (True, 1)
+    assert minor_change(list('abc'), list('xbx')) == (False, None)
+    assert minor_change(list('abc'), list('abcedf')) == (False, None)
+    assert minor_change(list('abc'), list('abc')) == (True, None)

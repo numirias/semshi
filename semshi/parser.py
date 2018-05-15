@@ -62,12 +62,12 @@ class Parser:
         """
         old_lines = self.lines
         new_lines = code.split('\n')
-        change_lineno = self._minor_change(old_lines, new_lines)
+        minor_change, change_lineno = self._minor_change(old_lines, new_lines)
         # TODO Make exception handling clearer
         new_nodes = self._make_nodes(code, new_lines, change_lineno)
         # Detecting minor changes keeps us from updating a lot of highlights
         # while the user is only editing a single line.
-        if not force and (change_lineno != -1):
+        if not force and minor_change:
             add, rem, keep = self._diff(self._nodes, new_nodes)
             self._nodes = keep + add
         else:
@@ -138,10 +138,7 @@ class Parser:
         # Replacing the line of the syntax error failed. Now try again with the
         # line of last change.
         if change_lineno is None:
-            # No change occurred, so can't check changed line.
-            raise orig_error
-        if change_lineno == -1:
-            # More than one line changed, so can't identify single change.
+            # Don't know where change occurred, so can't check changed line.
             raise orig_error
         if change_lineno == error_idx:
             # DOn't check a line we already used.
@@ -197,31 +194,35 @@ class Parser:
         return symtable.symtable(code, '?', 'exec')
 
     @staticmethod
-    def _minor_change(old, new):
-        """Return whether a minor change between old and new lines occurred.
+    def _minor_change(old_lines, new_lines):
+        """Determine whether a minor change between old and new lines occurred.
+        Return (`minor_change`, `change_lineno`) where `minor_change` is True
+        when at most one change occurred and `change_lineno` is the line number
+        of the change. 
 
         A minor change is a change in a single line while the total number of
-        lines remains constant.
+        lines doesn't change.
         """
-        # TODO Bad design: Currently returns lineno for single change, -1 for
-        # multiple changes, None for no change.
-        if len(old) != len(new):
-            return -1
-        old_iter = iter(old)
-        new_iter = iter(new)
+        if len(old_lines) != len(new_lines):
+            # A different number of lines doesn't count as minor change
+            return (False, None)
+        old_iter = iter(old_lines)
+        new_iter = iter(new_lines)
         diff_lineno = None
         lineno = 0
         try:
             while True:
-                old = next(old_iter)
-                new = next(new_iter)
-                if old != new:
+                old_lines = next(old_iter)
+                new_lines = next(new_iter)
+                if old_lines != new_lines:
                     if diff_lineno is not None:
-                        return -1
+                        # More than one change must have happened
+                        return (False, None)
                     diff_lineno = lineno
                 lineno += 1
         except StopIteration:
-            return diff_lineno
+            # We iterated through all lines with at most one change
+            return (True, diff_lineno)
 
     @staticmethod
     @debug_time
