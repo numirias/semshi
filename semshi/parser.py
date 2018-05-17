@@ -1,12 +1,12 @@
 import ast
-from collections import Iterable
+from collections import Iterable, deque
 from functools import singledispatch
 from keyword import kwlist
 import symtable
 from token import NAME, INDENT, OP
 from tokenize import TokenError, tokenize
 
-from .util import debug_time, logger
+from .util import debug_time, logger, lines_to_code, code_to_lines
 from .visitor import visitor
 
 
@@ -18,62 +18,61 @@ class UnparsableError(Exception):
 
 
 class Parser:
-
+    """The parser parses Python code and generates source code nodes. For every
+    run of `parse()` on changed source code, it returns the nodes that have
+    been added and removed.
+    """
     def __init__(self, exclude=None, fix_syntax=True):
         self._excluded = exclude or []
         self._fix_syntax = fix_syntax
+        self._locations = {}
         self._nodes = []
         self.lines = []
         # Incremented after every parse call
         self.tick = 0
-        # Holds the SyntaxError exception of the current run
-        self.syntax_error = None
-        # Holds the error of the previous run, so the buffer handler knows if
-        # error signs need to be updated
-        self.prev_syntax_error = None
+        # Holds the error of the current and previous run, so the buffer
+        # handler knows if error signs need to be updated.
+        self.syntax_errors = deque([None, None], maxlen=2)
         self.same_nodes = singledispatch(self.same_nodes)
         self.same_nodes.register(Iterable, self._same_nodes_cursor)
 
     @debug_time
-    def parse(self, code, force=False):
-        """Parse code and return tuple (add, remove) of added and removed nodes
-        since last run.
+    def parse(self, *args, **kwargs):
+        """Wrapper for `_parse()`.
 
-        Raises UnparsableError() if unrecoverable error occurred.
+        Raises UnparsableError() if an unrecoverable error occurred.
         """
-        # TODO Refactor SyntaxError/UnparsableError mechanics
         try:
-            res = self._parse(code, force)
-            self.tick += 1
-            return res
+            return self._parse(*args, **kwargs)
         except (SyntaxError, RecursionError) as e:
             logger.debug('parsing error: %s', e)
-            self.tick += 1
             raise UnparsableError(e)
+        finally:
+            self.tick += 1
 
     @debug_time
     def _filter_excluded(self, nodes):
         return [n for n in nodes if n.hl_group not in self._excluded]
 
-    def _parse(self, code, force):
-        """Inner parse function.
-
-        Return tuple (add, remove) of added and removed nodes since last run.
+    def _parse(self, code, force=False):
+        """Parse code and return tuple (`add`, `remove`) of added and removed
+        nodes since last run.
         """
+        self._locations.clear()
         old_lines = self.lines
-        new_lines = code.split('\n')
+        new_lines = code_to_lines(code)
         minor_change, change_lineno = self._minor_change(old_lines, new_lines)
-        # TODO Make exception handling clearer
+        old_nodes = self._nodes
         new_nodes = self._make_nodes(code, new_lines, change_lineno)
         # Detecting minor changes keeps us from updating a lot of highlights
         # while the user is only editing a single line.
-        if not force and minor_change:
-            add, rem, keep = self._diff(self._nodes, new_nodes)
+        if minor_change and not force:
+            add, rem, keep = self._diff(old_nodes, new_nodes)
             self._nodes = keep + add
         else:
-            add, rem = new_nodes, self._nodes
+            add, rem = new_nodes, old_nodes
             self._nodes = add
-        # Only assign new lines when nodes have been updates accordingly
+        # Only assign new lines when nodes have been updated accordingly
         self.lines = new_lines
         logger.debug('[%d] nodes: +%d,  -%d', self.tick, len(add), len(rem))
         return (self._filter_excluded(add), self._filter_excluded(rem))
@@ -85,9 +84,14 @@ class Parser:
         *and* lines around to avoid lots of conversions.
         """
         if lines is None:
-            lines = code.split('\n')
-        ast_root, fixed_code, fixed_lines = self._fix_errors(code, lines,
-                                                             change_lineno)
+            lines = code_to_lines(code)
+        try:
+            ast_root, fixed_code, fixed_lines, error = \
+                self._fix_syntax_and_make_ast(code, lines, change_lineno)
+        except SyntaxError as e:
+            # Apparently, fixing syntax errors failed
+            self.syntax_errors.append(e)
+            raise
         if fixed_code is not None:
             code = fixed_code
             lines = fixed_lines
@@ -95,13 +99,14 @@ class Parser:
             symtable_root = self._make_symtable(code)
         except SyntaxError as e:
             # In some cases, the symtable() call raises a syntax error which
-            # hasn't been caught earlier (such as duplicate arguments)
-            self.syntax_error = e
+            # hasn't been raised earlier (such as duplicate arguments)
+            self.syntax_errors.append(e)
             raise
+        self.syntax_errors.append(error)
         return visitor(lines, symtable_root, ast_root)
 
     @debug_time
-    def _fix_errors(self, code, lines, change_lineno):
+    def _fix_syntax_and_make_ast(self, code, lines, change_lineno):
         """Try to fix syntax errors in code (if present) and return AST, fixed
         code and list of fixed lines of code.
 
@@ -112,43 +117,39 @@ class Parser:
         - If that fails, do the same with the line of the last change.
         - If all attempts failed, raise original SyntaxError exception.
         """
-        # TODO Refactor and rename
         # TODO Cache previous attempt?
-        self.prev_syntax_error = self.syntax_error
         try:
-            self.syntax_error = None
-            return self._make_ast(code), None, None
+            return self._make_ast(code), None, None, None
         except SyntaxError as e:
             orig_error = e
             error_idx = e.lineno - 1
-        self.syntax_error = orig_error
         if not self._fix_syntax:
-            # Don't attempt to fix syntax errors
+            # Don't even attempt to fix syntax errors.
             raise orig_error
-        lines = lines[:] # TODO Do we need a copy?
-        orig_line = lines[error_idx]
-        lines[error_idx] = self._fix_line(orig_line)
-        code = '\n'.join(lines)
+        new_lines = lines[:]
+        # Save original line to restore later
+        orig_line = new_lines[error_idx]
+        new_lines[error_idx] = self._fix_line(orig_line)
+        new_code = lines_to_code(new_lines)
         try:
-            return self._make_ast(code), code, lines
+            ast_root = self._make_ast(new_code)
         except SyntaxError:
-            pass
-        # Restore original line
-        lines[error_idx] = orig_line
-        # Replacing the line of the syntax error failed. Now try again with the
-        # line of last change.
-        if change_lineno is None:
-            # Don't know where change occurred, so can't check changed line.
-            raise orig_error
-        if change_lineno == error_idx:
-            # DOn't check a line we already used.
-            raise orig_error
-        lines[change_lineno] = self._fix_line(lines[change_lineno])
-        code = '\n'.join(lines)
-        try:
-            return self._make_ast(code), code, lines
-        except SyntaxError:
-            raise orig_error
+            # Restore original line
+            new_lines[error_idx] = orig_line
+            # Fixing the line of the syntax error failed, so try again with the
+            # line of last change.
+            if change_lineno is None or change_lineno == error_idx:
+                # Don't try to fix the changed line if it's unknown or the same
+                # as the one we tried to fix before.
+                raise orig_error
+            new_lines[change_lineno] = self._fix_line(new_lines[change_lineno])
+            new_code = lines_to_code(new_lines)
+            try:
+                ast_root = self._make_ast(new_code)
+            except SyntaxError:
+                # All fixing attempts failed, so raise original syntax error.
+                raise orig_error
+        return ast_root, new_code, new_lines, orig_error
 
     @staticmethod
     def _fix_line(line):
@@ -303,11 +304,16 @@ class Parser:
         return self.same_nodes(cur_node, mark_original)
 
     def locations(self, types):
+        types_set = frozenset(types)
+        try:
+            return self._locations[types_set]
+        except KeyError:
+            pass
         visitor = _LocationCollectionVisitor(types)
-        # TODO Parsing the AST for every location determination is expensive
-        ast_root = ast.parse('\n'.join(self.lines))
-        visitor.visit(ast_root)
-        return visitor.locations
+        visitor.visit(ast.parse(lines_to_code(self.lines)))
+        locations = visitor.locations
+        self._locations[types_set] = locations
+        return locations
 
 
 class _LocationCollectionVisitor(ast.NodeVisitor):

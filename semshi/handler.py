@@ -3,7 +3,7 @@ import threading
 import time
 
 from .parser import Parser, UnparsableError
-from .util import logger, debug_time
+from .util import logger, debug_time, lines_to_code
 from .node import Node, SELECTED
 
 
@@ -53,11 +53,7 @@ class BufferHandler:
         Start a thread which reparses the code, update highlights.
         """
         if sync:
-            # TODO Unify with try-except in _update_loop
-            try:
-                self._update_step(force=force, sync=True)
-            except UnparsableError:
-                pass
+            self._update_step(force=force, sync=True)
             return
         thread = self._update_thread
         # If there is an active update thread...
@@ -77,7 +73,6 @@ class BufferHandler:
         Selected nodes are those with the same name and scope as the one at the
         cursor position.
         """
-        # TODO Make async?
         if not self._options.mark_selected_nodes:
             return
         mark_original = bool(self._options.mark_selected_nodes - 1)
@@ -90,19 +85,14 @@ class BufferHandler:
         self._clear_hls(nodes_to_hl(nodes, clear=True, marked=True))
         self._add_hls(nodes_to_hl(nodes, marked=True))
 
-    def _cursor(self, sync):
-        func = lambda: self._vim.current.window.cursor
-        return func() if sync else self._wait_for(func)
+    def _wait_for(self, func, sync=False):
+        """Return `func()`. If not `sync`, run `func` in async context and
+        block until result is received.
 
-    def _code(self, sync):
-        func = lambda: '\n'.join(self._buf[:])
-        return func() if sync else self._wait_for(func)
-
-    def _wait_for(self, func):
-        """Run `func` in async context, block until done and return result.
-
-        Needed when an async event handler needs the result of an API call.
+        Required for when we need the result of an API call from a thread.
         """
+        if sync:
+            return func()
         event = threading.Event()
         res = None
         def wrapper():
@@ -116,11 +106,7 @@ class BufferHandler:
     def _update_loop(self):
         try:
             while True:
-                try:
-                    self._update_step(
-                        self._options.always_update_all_highlights)
-                except UnparsableError:
-                    pass
+                self._update_step(self._options.always_update_all_highlights)
                 if self._options.error_sign:
                     self._schedule_update_error_sign()
                 if not self._scheduled:
@@ -136,10 +122,16 @@ class BufferHandler:
 
     @debug_time
     def _update_step(self, force=False, sync=False):
-        factor = self._options.update_delay_factor
-        if factor > 0:
-            time.sleep(factor * len(self._parser.lines))
-        add, rem = self._parser.parse(self._code(sync), force)
+        delay_factor = self._options.update_delay_factor
+        if delay_factor > 0:
+            time.sleep(delay_factor * len(self._parser.lines))
+        try:
+            add, rem = self._parser.parse(
+                self._wait_for(lambda: lines_to_code(self._buf[:]), sync),
+                force,
+            )
+        except UnparsableError:
+            return
         # TODO If we force update, can't we just clear all pending?
         # Remove nodes to be cleared from pending list
         rem_remaining = debug_time('remove from pending')(
@@ -150,7 +142,8 @@ class BufferHandler:
         # Update highlights by adding all new visible nodes and removing all
         # old nodes which have been drawn earlier
         self._update_hls(add_visible, rem_remaining)
-        self.mark_selected(self._cursor(sync))
+        self.mark_selected(
+            self._wait_for(lambda: self._vim.current.window.cursor, sync))
 
     @debug_time
     def _add_visible_hls(self):
@@ -190,9 +183,9 @@ class BufferHandler:
         if self._error_timer is not None:
             self._error_timer.cancel()
         # If no error is present...
-        if self._parser.syntax_error is None:
+        if self._parser.syntax_errors[-1] is None:
             # ... but previously was...
-            if self._parser.prev_syntax_error is not None:
+            if self._parser.syntax_errors[-2] is not None:
                 # ... update immediately.
                 self._update_error_sign()
             # If the current and previous update happened without syntax
@@ -207,7 +200,7 @@ class BufferHandler:
 
     def _update_error_sign(self):
         self._unplace_sign(ERROR_SIGN_ID)
-        error = self._parser.syntax_error
+        error = self._parser.syntax_errors[-1]
         if error is None:
             return
         self._place_sign(ERROR_SIGN_ID, error.lineno, 'semshiError')
@@ -323,6 +316,7 @@ def nodes_to_hl(nodes, clear=False, marked=False):
 
 def next_location(here, all, reverse=False):
     """Return the location from `all` that comes after `here`."""
+    all = all[:]
     if here not in all:
         all.append(here)
     all = sorted(all)

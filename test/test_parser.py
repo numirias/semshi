@@ -106,18 +106,18 @@ def test_fixable_syntax_errors_attributes():
 
 def test_syntax_error_cycle():
     parser = make_parser('')
-    assert parser.prev_syntax_error is None
-    assert parser.syntax_error is None
+    assert parser.syntax_errors[-2] is None
+    assert parser.syntax_errors[-1] is None
     parser.parse('1+')
-    assert parser.prev_syntax_error is None
-    assert parser.syntax_error.lineno == 1
+    assert parser.syntax_errors[-2] is None
+    assert parser.syntax_errors[-1].lineno == 1
     parser.parse('1+1')
-    assert parser.prev_syntax_error.lineno == 1
-    assert parser.syntax_error is None
+    assert parser.syntax_errors[-2].lineno == 1
+    assert parser.syntax_errors[-1] is None
     with pytest.raises(UnparsableError):
         parser.parse('\n+\n+')
-    assert parser.prev_syntax_error is None
-    assert parser.syntax_error.lineno == 2
+    assert parser.syntax_errors[-2] is None
+    assert parser.syntax_errors[-1].lineno == 2
 
 
 def test_detect_symtable_syntax_error():
@@ -127,7 +127,7 @@ def test_detect_symtable_syntax_error():
     parser = Parser()
     with pytest.raises(UnparsableError):
         parser.parse('def foo(x, x): pass')
-    assert parser.syntax_error.lineno == 1
+    assert parser.syntax_errors[-1].lineno == 1
 
 
 def test_name_len():
