@@ -2,6 +2,8 @@ from collections import defaultdict
 import threading
 import time
 
+import neovim
+
 from .parser import Parser, UnparsableError
 from .util import logger, debug_time, lines_to_code
 from .node import Node, SELECTED
@@ -284,23 +286,36 @@ class BufferHandler:
             self._buf[lineno - 1] = line
         self._vim.out_write('%d nodes renamed.\n' % num)
 
-    def next_location(self, kind, location, reverse=False):
-        """Return the location of the next node after node at `location`.
+    def goto(self, kind, direction):
+        """Go to next location of type `kind` (one of {name, class, function})
+        in direction `direction` (one of {next, prev, first, last}).
         """
         from ast import ClassDef, FunctionDef, AsyncFunctionDef
+        here = tuple(self._vim.current.window.cursor)
         if kind == 'name':
-            cur_node = self._parser.node_at(location)
+            cur_node = self._parser.node_at(here)
             if cur_node is None:
-                raise ValueError('No node at cursor.')
-            locs = [n.pos for n in self._parser.same_nodes(
-                cur_node, use_target=self._options.self_to_attribute)]
+                return
+            locs = sorted([n.pos for n in self._parser.same_nodes(
+                cur_node, use_target=self._options.self_to_attribute)])
         elif kind == 'class':
-            locs = self._parser.locations([ClassDef])
+            locs = self._parser.locations_of([ClassDef])
         elif kind == 'function':
-            locs = self._parser.locations([FunctionDef, AsyncFunctionDef])
+            locs = self._parser.locations_of([FunctionDef, AsyncFunctionDef])
         else:
             raise ValueError('"%s" is not a recognized element type.' % kind)
-        return next_location(tuple(location), locs, reverse)
+        if direction == 'first':
+            new_loc = locs[0]
+        elif direction == 'last':
+            new_loc = locs[-1]
+        else:
+            new_loc = next_location(here, locs, (direction == 'prev'))
+        try:
+            self._vim.current.window.cursor = new_loc
+        except neovim.api.nvim.NvimError:
+            # This can happen when the new cursor position is outside the
+            # buffer because the code wasn't re-parsed after a buffer change.
+            pass
 
 
 def nodes_to_hl(nodes, clear=False, marked=False):
@@ -316,10 +331,10 @@ def nodes_to_hl(nodes, clear=False, marked=False):
     return [(n.id, n.hl_group, n.lineno - 1, n.col, n.end) for n in nodes]
 
 
-def next_location(here, all, reverse=False):
-    """Return the location from `all` that comes after `here`."""
-    all = all[:]
-    if here not in all:
-        all.append(here)
-    all = sorted(all)
-    return all[(all.index(here) + (-1 if reverse else 1)) % len(all)]
+def next_location(here, locs, reverse=False):
+    """Return the location of `locs` that comes after `here`."""
+    locs = locs[:]
+    if here not in locs:
+        locs.append(here)
+    locs = sorted(locs)
+    return locs[(locs.index(here) + (-1 if reverse else 1)) % len(locs)]

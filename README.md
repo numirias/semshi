@@ -108,7 +108,7 @@ The following commands can be executed via `:Semshi <command>`:
 | `version` | Show version. |
 | `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
 | `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. |
-| `goto ("name"\|"function"\|"class") ("next"\|"prev")` | Jump to next/previous name/function/class. (See below for sample mappings.) |
+| `goto ("name"\|"function"\|"class") ("next"\|"prev"\|"first"\|"last")` | Jump to next/previous/first/last name/function/class. (See below for sample mappings.) |
 
 Here are some possible mappings:
 

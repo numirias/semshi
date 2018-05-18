@@ -302,7 +302,7 @@ class Parser:
             return []
         return self.same_nodes(cur_node, mark_original, use_target)
 
-    def locations(self, types):
+    def locations_of(self, types):
         types_set = frozenset(types)
         try:
             return self._locations[types_set]

@@ -286,7 +286,26 @@ def test_rename():
     assert vim.current.buffer[:] == ['CC, CC, bbb', 'CC']
 
 
-def test_walk_names():
+def test_goto():
+    vim = start_vim(file='')
+    vim.current.buffer[:] = [
+        'class Foo:',
+        ' def foo(self): pass',
+        'class Bar: pass',
+        'class Baz: pass',
+    ]
+    time.sleep(SLEEP)
+    vim.command('Semshi goto function next')
+    wait_for(lambda: vim.current.window.cursor == [2, 1])
+    vim.command('Semshi goto class prev')
+    wait_for(lambda: vim.current.window.cursor == [1, 0])
+    vim.command('Semshi goto class last')
+    wait_for(lambda: vim.current.window.cursor == [4, 0])
+    vim.command('Semshi goto class first')
+    wait_for(lambda: vim.current.window.cursor == [1, 0])
+
+
+def test_goto_name():
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa, aaa, aaa']
     wait_for_tick(vim)
