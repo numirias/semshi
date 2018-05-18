@@ -281,7 +281,6 @@ class Parser:
         The same scope is to be understood as all nodes with the same base
         symtable. In some cases this can be ambiguous.
         """
-        # TODO Make this an option
         if use_target:
             target = cur_node.target
             if target is not None:
@@ -296,12 +295,12 @@ class Parser:
             if node.base_table() == base_table:
                 yield node
 
-    def _same_nodes_cursor(self, cursor, mark_original=True):
+    def _same_nodes_cursor(self, cursor, mark_original=True, use_target=True):
         """Return nodes with the same scope as node at the cursor position."""
         cur_node = self.node_at(cursor)
         if cur_node is None:
             return []
-        return self.same_nodes(cur_node, mark_original)
+        return self.same_nodes(cur_node, mark_original, use_target)
 
     def locations(self, types):
         types_set = frozenset(types)

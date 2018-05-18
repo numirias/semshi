@@ -187,3 +187,6 @@ class Options:
 
     def _option_update_delay_factor(self):
         return self._option('update_delay_factor')
+
+    def _option_self_to_attribute(self):
+        return bool(self._option('self_to_attribute'))

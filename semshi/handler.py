@@ -76,7 +76,8 @@ class BufferHandler:
         if not self._options.mark_selected_nodes:
             return
         mark_original = bool(self._options.mark_selected_nodes - 1)
-        nodes = self._parser.same_nodes(cursor, mark_original)
+        nodes = self._parser.same_nodes(cursor, mark_original,
+                                        self._options.self_to_attribute)
         start, stop = self._view
         nodes = [n for n in nodes if start <= n.lineno <= stop]
         if nodes == self._selected_nodes:
@@ -256,7 +257,11 @@ class BufferHandler:
         if cur_node is None:
             self._vim.out_write('Nothing to rename here.\n')
             return
-        nodes = list(self._parser.same_nodes(cur_node, True))
+        nodes = list(self._parser.same_nodes(
+            cur_node,
+            mark_original=True,
+            use_target=self._options.self_to_attribute,
+        ))
         num = len(nodes)
         if new_name is None:
             new_name = self._vim.eval('input("Rename %d nodes to: ")' % num)
@@ -287,11 +292,8 @@ class BufferHandler:
             cur_node = self._parser.node_at(location)
             if cur_node is None:
                 raise ValueError('No node at cursor.')
-            target = cur_node.target
-            if target is not None:
-                cur_node = target
-            locs = [n.pos for n in self._parser.same_nodes(cur_node,
-                                                           use_target=False)]
+            locs = [n.pos for n in self._parser.same_nodes(
+                cur_node, use_target=self._options.self_to_attribute)]
         elif kind == 'class':
             locs = self._parser.locations([ClassDef])
         elif kind == 'function':

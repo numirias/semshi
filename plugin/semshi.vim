@@ -54,6 +54,10 @@ if !exists('g:semshi#update_delay_factor')
     let g:semshi#update_delay_factor = 0
 endif
 
+if !exists('g:semshi#self_to_attribute')
+    let g:semshi#self_to_attribute = 1
+endif
+
 function! s:remove_builtin_extra()
     syn keyword pythonKeyword True False None
     hi link pythonKeyword pythonNumber

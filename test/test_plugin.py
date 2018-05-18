@@ -254,6 +254,20 @@ def test_option_update_delay_factor():
     assert num_nodes == 0
 
 
+def test_option_self_to_attribute():
+    buf = ['class Foo:', ' def foo(self): self.bar, self.bar']
+    selected = lambda: host_eval(vim)('[n.pos for n in plugin._cur_handler._selected_nodes]')
+    vim = start_vim(file='')
+    vim.current.buffer[:] = buf
+    vim.current.window.cursor = [2, 16]
+    wait_for(selected, lambda x: x == [[2, 31]])
+
+    vim = start_vim(['--cmd', 'let g:semshi#self_to_attribute = 0'], file='')
+    vim.current.buffer[:] = buf
+    vim.current.window.cursor = [2, 16]
+    wait_for(selected, lambda x: x == [[2, 9], [2, 26]])
+
+
 def test_rename():
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa, aaa, bbb', 'aaa']
@@ -276,6 +290,7 @@ def test_walk_names():
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa, aaa, aaa']
     wait_for_tick(vim)
+    time.sleep(SLEEP)
     vim.command('Semshi goto name next')
     wait_for(lambda: vim.current.window.cursor == [1, 5])
     time.sleep(SLEEP)
