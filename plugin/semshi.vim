@@ -20,12 +20,14 @@ let g:semshi#active = get(g:, 'semshi#active', v:true)
 let g:semshi#simplify_markup = get(g:, 'semshi#simplify_markup', v:true)
 let g:semshi#no_default_builtin_highlight = get(g:, 'semshi#no_default_builtin_highlight', v:true)
 
-function! s:remove_builtin_extra()
-    syn keyword pythonKeyword True False None
-    hi link pythonKeyword pythonNumber
+function! s:simplify_markup()
+    autocmd FileType python call s:simplify_markup_extra()
+
+    " For python-syntax plugin
+    let g:python_highlight_operators = 0
 endfunction
 
-function! s:simplify_markup()
+function! s:simplify_markup_extra()
     hi link pythonConditional pythonStatement
     hi link pythonImport pythonStatement
     hi link pythonInclude pythonStatement
@@ -34,13 +36,10 @@ function! s:simplify_markup()
     hi link pythonException pythonStatement
     hi link pythonConditional pythonStatement
     hi link pythonRepeat pythonStatement
-
-    " For python-syntax plugin
-    let g:python_highlight_operators = 0
 endfunction
 
 function! s:disable_builtin_highlights()
-    call s:remove_builtin_extra()
+    autocmd FileType python call s:remove_builtin_extra()
     let g:python_no_builtin_highlight = 1
     hi link pythonBuiltin NONE
     let g:python_no_exception_highlight = 1
@@ -53,6 +52,11 @@ function! s:disable_builtin_highlights()
     let g:python_highlight_builtins = 0
     let g:python_highlight_exceptions = 0
     hi link pythonDottedName NONE
+endfunction
+
+function! s:remove_builtin_extra()
+    syn keyword pythonKeyword True False None
+    hi link pythonKeyword pythonNumber
 endfunction
 
 function! semshi#init()
