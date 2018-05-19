@@ -169,13 +169,11 @@ def test_option_mark_selected_nodes():
 
 def test_option_no_default_builtin_highlight():
     synstack_cmd = 'map(synstack(line("."), col(".")), "synIDattr(v:val, \'name\')")'
-    vim = start_vim()
-    vim.command('set syntax=python')
+    vim = start_vim(file='')
     vim.current.buffer[:] = ['len']
     assert vim.eval(synstack_cmd) == []
 
-    vim = start_vim(['--cmd', 'let g:semshi#no_default_builtin_highlight = 0'])
-    vim.command('set syntax=python')
+    vim = start_vim(['--cmd', 'let g:semshi#no_default_builtin_highlight = 0'], file='')
     vim.current.buffer[:] = ['len']
     assert vim.eval(synstack_cmd) == ['pythonBuiltin']
 

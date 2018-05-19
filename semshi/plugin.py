@@ -24,8 +24,11 @@ def subcommand(func):
 
 @neovim.plugin
 class Plugin:
-    """Semshi neovim plugin."""
+    """Semshi Neovim plugin.
 
+    The plugin handles vim events and commands, and delegates them to a buffer
+    handler. (Each buffer is handled by a semshi.BufferHandler instance.)
+    """
     # File pattern when to attach event handlers
     _pattern = '*.py'
 
@@ -41,8 +44,8 @@ class Plugin:
     @neovim.autocmd('BufEnter', pattern=_pattern, sync=True)
     def event_buf_enter(self):
         if self._options is None:
-            # We'd want to initialize the options on VimEnter, but that event
-            # is called *after* BufEnter, so we need to do it here.
+            # We'd want to do initialization on VimEnter, but that event may be
+            # called *after* BufEnter, so we need to trigger it here.
             self._options = Options(self._vim)
         if not self._options.active:
             return
@@ -136,43 +139,39 @@ class Plugin:
 class Options:
     """Plugin options.
 
+    The options will only be read and set once on init.
     """
+    _defaults = {
+        'active': True,
+        'excluded_hl_groups': ['local'],
+        'mark_selected_nodes': True,
+        'no_default_builtin_highlight': True,
+        'simplify_markup': True,
+        'error_sign': True,
+        'error_sign_delay': 1.5,
+        'always_update_all_highlights': False,
+        'tolerate_syntax_errors': True,
+        'update_delay_factor': .0,
+        'self_to_attribute': True,
+    }
+
     def __init__(self, vim):
-        self._vim = vim
-        for name, func in Options.__dict__.items():
-            if not name.startswith('_option_'):
-                continue
-            setattr(self, name[8:], func(self))
+        for key, val_default in Options._defaults.items():
+            try:
+                val = vim.vars['semshi#' + key]
+            except neovim.api.NvimError: # i.e. KeyError
+                val = vim.vars['semshi#' + key] = val_default
+            try:
+                converter = getattr(Options, '_convert_' + key)
+            except AttributeError:
+                pass
+            else:
+                val = converter(val)
+            setattr(self, key, val)
 
-    def _option(self, option_name):
-        return self._vim.eval('g:semshi#%s' % option_name)
-
-    def _option_active(self):
-        return bool(self._option('active'))
-
-    def _option_excluded_hl_groups(self):
+    @staticmethod
+    def _convert_excluded_hl_groups(items):
         try:
-            return [groups[g] for g in self._option('excluded_hl_groups')]
+            return [groups[g] for g in items]
         except KeyError as e:
             raise Exception('"%s" is an unknown highlight group.' % e.args[0])
-
-    def _option_mark_selected_nodes(self):
-        return self._option('mark_selected_nodes')
-
-    def _option_error_sign(self):
-        return bool(self._option('error_sign'))
-
-    def _option_error_sign_delay(self):
-        return self._option('error_sign_delay')
-
-    def _option_always_update_all_highlights(self):
-        return bool(self._option('always_update_all_highlights'))
-
-    def _option_tolerate_syntax_errors(self):
-        return bool(self._option('tolerate_syntax_errors'))
-
-    def _option_update_delay_factor(self):
-        return self._option('update_delay_factor')
-
-    def _option_self_to_attribute(self):
-        return bool(self._option('self_to_attribute'))
