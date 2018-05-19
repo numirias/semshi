@@ -1,13 +1,14 @@
 # pylint: disable=unidiomatic-typecheck
 from ast import (AsyncFunctionDef, Attribute, ClassDef, DictComp, Eq,
-                 FunctionDef, GeneratorExp, Gt, GtE, Import, ImportFrom,
-                 Lambda, ListComp, Load, Lt, LtE, Module, Name, NameConstant,
-                 NotEq, Num, SetComp, Store, Str, Try, arg)
+                 ExceptHandler, FunctionDef, GeneratorExp, Global, Gt, GtE,
+                 Import, ImportFrom, Lambda, ListComp, Load, Lt, LtE, Module,
+                 Name, NameConstant, Nonlocal, NotEq, Num, SetComp, Store, Str,
+                 Try, arg)
 from itertools import count
 from token import NAME, OP
 from tokenize import tokenize
 
-from .node import Node, PARAMETER_UNUSED, SELF, ATTRIBUTE, IMPORTED
+from .node import ATTRIBUTE, IMPORTED, PARAMETER_UNUSED, SELF, Node
 from .util import debug_time
 
 
@@ -24,7 +25,12 @@ def tokenize_lines(lines):
 
 
 def advance(tokens, s=None, type=NAME):
-    """Advance token stream."""
+    """Advance token stream `tokens`.
+
+    Advances to next token of type `type` with the string representation `s` or
+    matching one of the strings in `s` if `s` is an iterable. Without any
+    arguments, just advances to next NAME token.
+    """
     if s is None:
         cond = lambda token: True
     elif isinstance(s, str):
@@ -75,6 +81,8 @@ class Visitor:
             return
         elif type_ is Try:
             self._visit_try(node)
+        elif type_ is ExceptHandler:
+            self._visit_except(node)
         elif type_ in (Import, ImportFrom):
             self._visit_import(node)
         elif type_ is arg:
@@ -83,6 +91,9 @@ class Visitor:
             self._visit_arg_defaults(node)
         elif type_ in (ListComp, SetComp, DictComp, GeneratorExp):
             self._visit_comp(node)
+        elif type_ in (Global, Nonlocal):
+            keyword = 'global' if type_ is Global else 'nonlocal'
+            self._visit_global_nonlocal(node, keyword)
         if type_ in (FunctionDef, ClassDef, AsyncFunctionDef):
             self._visit_class_function_definition(node)
             if type_ is ClassDef:
@@ -148,6 +159,26 @@ class Visitor:
         for child in node.orelse:
             self.visit(child)
         del node.orelse
+
+    def _visit_except(self, node):
+        """Visit except branch."""
+        if node.name is None:
+            # There is no "as ..." branch, so don't do anything.
+            return
+        # We can't really predict the line for "except-as", so we must always
+        # tokenize.
+        line_idx = node.lineno - 1
+        tokens = tokenize_lines(self._lines[i] for i in count(line_idx))
+        advance(tokens, 'as')
+        token = advance(tokens)
+        lineno = token.start[0] + line_idx
+        cur_line = self._lines[lineno - 1]
+        self.nodes.append(Node(
+            node.name,
+            lineno,
+            len(cur_line[:token.start[1]].encode('utf-8')),
+            self._cur_env,
+        ))
 
     def _visit_comp(self, node):
         """Visit set/dict/list comprehension or generator expression."""
@@ -267,6 +298,40 @@ class Visitor:
             lineno = token.start[0] + line_idx
             column = token.start[1]
         self.nodes.append(Node(node.name, lineno, column, self._cur_env))
+
+    def _visit_global_nonlocal(self, node, keyword):
+        line_idx = node.lineno - 1
+        line = self._lines[line_idx]
+        indent = line[:-len(line.lstrip())]
+        if line == indent + keyword + ' ' + ', '.join(node.names):
+            offset = len(indent) + len(keyword) + 1
+            for name in node.names:
+                self.nodes.append(Node(
+                    name,
+                    node.lineno,
+                    offset,
+                    self._cur_env,
+                ))
+                # Add 2 bytes for the comma and space
+                offset += len(name.encode('utf-8')) + 2
+            return
+        # Couldn't guess line, so we need to tokenize.
+        tokens = tokenize_lines(self._lines[i] for i in count(line_idx))
+        # Advance to global/nonlocal statement
+        advance(tokens, keyword)
+        for name, more in zip(node.names, count(1 - len(node.names))):
+            token = advance(tokens)
+            cur_line = self._lines[line_idx + token.start[0] - 1]
+            self.nodes.append(Node(
+                token.string,
+                token.start[0] + line_idx,
+                len(cur_line[:token.start[1]].encode('utf-8')),
+                self._cur_env,
+            ))
+            # If there are more declared names...
+            if more:
+                # ...advance to next comma.
+                advance(tokens, ',', OP)
 
     def _mark_self(self, node):
         """Mark self/cls argument if the current function has one.

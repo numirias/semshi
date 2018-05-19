@@ -388,6 +388,37 @@ def test_try_except_order():
     assert root['D']['names'] == ['d']
 
 
+def test_except_as():
+    names = parse('try: pass\nexcept E as a: pass\nexcept F as\\\n b: pass')
+    assert next(n.pos for n in names if n.name == 'a') == (2, 12)
+    assert next(n.pos for n in names if n.name == 'b') == (4, 1)
+
+
+def test_global_nonlocal():
+    names = parse('''
+    global ä, ää, \
+    b
+    def foo():
+        c = 1
+        def bar():
+            nonlocal c
+    ''')
+    print([(n.name, n.pos) for n in names])
+    assert [(n.name, n.pos) for n in names] == [
+        ('ä', (2, 7)),
+        ('ää', (2, 11)),
+        # Note: We take advantage of the fact that adding a highlight
+        # exceeding the line length also automatically wraps, so (2, 21) is a
+        # valid position although the position of "b" in the buffer is
+        # actually (3, 0).
+        ('b', (2, 21)),
+        ('foo', (3, 4)),
+        ('c', (4, 4)),
+        ('bar', (5, 8)),
+        ('c', (6, 17)),
+    ]
+
+
 def test_lambda():
     names = parse('''
     lambda a: b
@@ -525,9 +556,9 @@ def test_base_scope_global():
             x
     ''')
     names = parser._nodes
-    x, a, a_x, b, b_x = names
+    x, a, a_x, b, b_global_x, b_x = names
     same_nodes = set(parser.same_nodes(x))
-    assert same_nodes == {x, b_x}
+    assert same_nodes == {x, b_global_x, b_x}
 
 
 def test_base_scope_free():
@@ -578,8 +609,8 @@ def test_base_scope_nonlocal_free():
             nonlocal a
             a = 1
     ''')
-    foo, foo_a, bar, bar_a = parser._nodes
-    assert set(parser.same_nodes(foo_a)) == {foo_a, bar_a}
+    foo, foo_a, bar, bar_nonlocal_a, bar_a = parser._nodes
+    assert set(parser.same_nodes(foo_a)) == {foo_a, bar_nonlocal_a, bar_a}
 
 
 def test_attributes():

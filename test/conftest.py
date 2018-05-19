@@ -3,8 +3,6 @@ from textwrap import dedent
 
 from semshi.parser import Parser
 
-# from .astpretty import pprint
-
 
 def make_tree(names):
     root = {}
@@ -26,7 +24,6 @@ def dump_dict(root):
     import json
     print(json.dumps(root, indent=4))
 
-
 def dump_symtable(table_or_code):
     import symtable
     if isinstance(table_or_code, str):
@@ -44,25 +41,20 @@ def dump_symtable(table_or_code):
             visit_table(child, indent=indent+4)
     visit_table(table)
 
-
 def dump_ast(node_or_code):
     if isinstance(node_or_code, str):
         node = ast.parse(dedent(node_or_code))
     else:
         node = node_or_code
-    pprint(node)
-    # tree = ast.dump(node)
-    # print(tree)
-
+    tree = ast.dump(node)
+    print(tree)
 
 def parse(code):
-    # pprint(ast.parse(dedent(code)))
     add, remove = Parser().parse(dedent(code))
     assert len(remove) == 0
     for node in add:
         node.base_table()
     return add
-
 
 def make_parser(code):
     parser = Parser()
