@@ -266,6 +266,14 @@ def test_option_self_to_attribute():
     wait_for(selected, lambda x: x == [[2, 9], [2, 26]])
 
 
+def test_option_excluded_buffers():
+    vim = start_vim(['--cmd', 'let g:semshi#excluded_buffers = ["*/foo.py"]'], file='foo.py')
+    vim.current.buffer[:] = ['aaa']
+    time.sleep(SLEEP)
+    num_nodes = host_eval(vim)('len(plugin._cur_handler._parser._nodes)')
+    assert num_nodes == 0
+
+
 def test_rename():
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa, aaa, bbb', 'aaa']
@@ -338,5 +346,15 @@ def test_clear():
     vim.current.buffer[:] = ['aaa']
     time.sleep(SLEEP)
     vim.command('Semshi clear')
-    num_nodes = host_eval(vim)('len(plugin._cur_handler._parser._nodes)')
-    assert num_nodes == 0
+    assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 0
+
+
+def test_enable_disable():
+    vim = start_vim(file='')
+    vim.current.buffer[:] = ['aaa']
+    time.sleep(SLEEP)
+    assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 1
+    vim.command('Semshi disable')
+    assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 0
+    vim.command('Semshi enable')
+    assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 1

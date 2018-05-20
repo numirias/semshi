@@ -54,6 +54,7 @@ You can set these options in your vimrc (`~/.config/nvim/init.vim`):
 | Option | Default | Description |
 | --- | --- | --- |
 | `g:semshi#active` | `v:true` | Activate event handlers. |
+| `g:semshi#excluded_buffers` | `[]` | List of buffer names (glob matching) to exclude from highlighting. (E.g. `['*/__init__.py']` to exclude all init files.) |
 | `g:semshi#excluded_hl_groups` | `['local']` | List of highlight groups not to highlight. Chose from `local`, `unresolved`, `attribute`, `builtin`, `free`, `global`, `parameter`, `parameterUnused`, `self`, `imported`. (It's recommended to keep `local` in the list because highlighting all locals in a large file can cause performance issues.) |
 | `g:semshi#mark_selected_nodes ` | `v:true` | Mark selected nodes (those with the same name and scope as the one under the cursor). Set to `2` to highlight the node currently under the cursor, too. |
 | `g:semshi#no_default_builtin_highlight` | `v:true` | Disable highlighting of builtins (`list`, `len`, etc.) by Vim's own Python syntax highlighter, because that's Semshi's job. If you turn it off, Vim may add incorrect highlights. |
@@ -107,6 +108,8 @@ The following commands can be executed via `:Semshi <command>`:
 | Command | Description |
 | --- | --- |
 | `version` | Show version. |
+| `enable` | Enable highlighting for current buffer. |
+| `disable` | Disable highlighting for current buffer. |
 | `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
 | `clear` | Clear all highlights in current buffer. |
 | `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. |

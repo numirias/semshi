@@ -51,35 +51,41 @@ class Plugin:
             return
         self._switch_handler()
         self._update_viewport()
-        self._cur_handler.update()
+        if self._cur_handler.enabled:
+            self._cur_handler.update()
 
     @neovim.autocmd('VimResized', pattern=_pattern, sync=False)
     @if_active
     def event_vim_resized(self):
         self._update_viewport()
-        self._mark_selected()
+        if self._cur_handler.enabled:
+            self._mark_selected()
 
     @neovim.autocmd('CursorMoved', pattern=_pattern, sync=False)
     @if_active
     def event_cursor_moved(self):
         self._update_viewport()
-        self._mark_selected()
+        if self._cur_handler.enabled:
+            self._mark_selected()
 
     @neovim.autocmd('CursorMovedI', pattern=_pattern, sync=False)
     @if_active
     def event_cursor_moved_insert(self):
         self._update_viewport()
-        self._mark_selected()
+        if self._cur_handler.enabled:
+            self._mark_selected()
 
     @neovim.autocmd('TextChanged', pattern=_pattern, sync=False)
     @if_active
     def event_text_changed(self):
-        self._cur_handler.update()
+        if self._cur_handler.enabled:
+            self._cur_handler.update()
 
     @neovim.autocmd('TextChangedI', pattern=_pattern, sync=False)
     @if_active
     def event_text_changed_insert(self):
-        self._cur_handler.update()
+        if self._cur_handler.enabled:
+            self._cur_handler.update()
 
     @neovim.command('Semshi', nargs='*', complete='customlist,SemshiComplete',
                     sync=True)
@@ -103,6 +109,16 @@ class Plugin:
     @subcommand
     def version(self):
         self._vim.out_write('semshi v0.0\n')
+
+    @subcommand
+    def enable(self):
+        self._cur_handler.enabled = True
+        self.highlight()
+
+    @subcommand
+    def disable(self):
+        self._cur_handler.enabled = False
+        self.clear()
 
     @subcommand
     def highlight(self):
@@ -151,6 +167,7 @@ class Options:
     """
     _defaults = {
         'active': True,
+        'excluded_buffers': [],
         'excluded_hl_groups': ['local'],
         'mark_selected_nodes': True,
         'no_default_builtin_highlight': True,

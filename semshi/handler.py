@@ -1,4 +1,5 @@
 from collections import defaultdict
+from fnmatch import fnmatch
 import threading
 import time
 
@@ -38,6 +39,8 @@ class BufferHandler:
         # Nodes which are currently marked as a selected. We keep track of them
         # to check if they haven't changed between updates.
         self._selected_nodes = []
+        self.enabled = not any(fnmatch(buf.name, pattern) for pattern in
+                               self._options.excluded_buffers)
 
     def viewport(self, start, stop):
         """Set viewport to line range from `start` to `stop` and add highlights
@@ -120,8 +123,6 @@ class BufferHandler:
                 if delay_factor > 0:
                     time.sleep(delay_factor * len(self._parser.lines))
                 self._update_step(self._options.always_update_all_highlights)
-                if self._options.error_sign:
-                    self._schedule_update_error_sign()
                 if not self._scheduled:
                     break
                 self._scheduled = False
@@ -135,24 +136,30 @@ class BufferHandler:
 
     @debug_time
     def _update_step(self, force=False, sync=False, code=None):
+        """Trigger parser, update highlights accordingly, and trigger update of
+        error sign.
+        """
         if code is None:
             code = self._wait_for(lambda: lines_to_code(self._buf[:]), sync)
         try:
             add, rem = self._parser.parse(code, force)
         except UnparsableError:
-            return
-        # TODO If we force update, can't we just clear all pending?
-        # Remove nodes to be cleared from pending list
-        rem_remaining = debug_time('remove from pending')(
-            lambda: list(self._remove_from_pending(rem)))()
-        add_visible, add_hidden = self._visible_and_hidden(add)
-        # Add all new but hidden nodes to pending list
-        self._pending_nodes += add_hidden
-        # Update highlights by adding all new visible nodes and removing all
-        # old nodes which have been drawn earlier
-        self._update_hls(add_visible, rem_remaining)
-        self.mark_selected(
-            self._wait_for(lambda: self._vim.current.window.cursor, sync))
+            pass
+        else:
+            # TODO If we force update, can't we just clear all pending?
+            # Remove nodes to be cleared from pending list
+            rem_remaining = debug_time('remove from pending')(
+                lambda: list(self._remove_from_pending(rem)))()
+            add_visible, add_hidden = self._visible_and_hidden(add)
+            # Add all new but hidden nodes to pending list
+            self._pending_nodes += add_hidden
+            # Update highlights by adding all new visible nodes and removing
+            # all old nodes which have been drawn earlier
+            self._update_hls(add_visible, rem_remaining)
+            self.mark_selected(
+                self._wait_for(lambda: self._vim.current.window.cursor, sync))
+        if self._options.error_sign:
+            self._schedule_update_error_sign()
 
     @debug_time
     def _add_visible_hls(self):
