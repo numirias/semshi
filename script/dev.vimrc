@@ -46,3 +46,6 @@ nmap <silent> <C-p> :Semshi goto class prev<CR>
 
 nmap <silent> <C-a> :Semshi goto function next<CR>
 nmap <silent> <C-x> :Semshi goto function prev<CR>
+
+nmap <silent> <leader>ee :Semshi error<CR>
+nmap <silent> <leader>ge :Semshi goto error<CR>

@@ -116,6 +116,10 @@ class Plugin:
     def goto(self, *args, **kwargs):
         self._cur_handler.goto(*args, **kwargs)
 
+    @subcommand
+    def error(self):
+        self._cur_handler.show_error()
+
     def _switch_handler(self):
         buf = self._vim.current.buffer
         try:

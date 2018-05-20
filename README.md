@@ -83,6 +83,7 @@ hi semshiUnresolved      ctermfg=226 guifg=#ffff00 cterm=underline gui=underline
 hi semshiSelected        ctermfg=231 guifg=#ffffff ctermbg=161 guibg=#d7005f
 
 hi semshiErrorSign       ctermfg=231 guifg=#ffffff ctermbg=160 guibg=#d70000
+hi semshiErrorChar       ctermfg=231 guifg=#ffffff ctermbg=160 guibg=#d70000
 sign define semshiError text=E> texthl=semshiErrorSign
 ```
 If you want to overwrite them in your vimrc, make sure to apply them *after* Semshi has set the defaults, e.g. in a function:
@@ -108,7 +109,9 @@ The following commands can be executed via `:Semshi <command>`:
 | `version` | Show version. |
 | `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
 | `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. |
-| `goto ("name"\|"function"\|"class") ("next"\|"prev"\|"first"\|"last")` | Jump to next/previous/first/last name/function/class. (See below for sample mappings.) |
+| `error` | Echo current syntax error message. |
+| `goto error` | Jump to current syntax error. |
+| `goto (name\|function\|class) (next\|prev\|first\|last)` | Jump to next/previous/first/last name/function/class. (See below for sample mappings.) |
 
 Here are some possible mappings:
 
@@ -123,6 +126,9 @@ nmap <silent> <leader>C :Semshi goto class prev<CR>
 
 nmap <silent> <leader>f :Semshi goto function next<CR>
 nmap <silent> <leader>F :Semshi goto function prev<CR>
+
+nmap <silent> <leader>ee :Semshi error<CR>
+nmap <silent> <leader>ge :Semshi goto error<CR>
 ```
 
 ## Limitations

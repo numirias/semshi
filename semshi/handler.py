@@ -10,6 +10,7 @@ from .node import Node, SELECTED
 
 
 ERROR_SIGN_ID = 314000
+ERROR_HL_ID = 313000
 
 
 class BufferHandler:
@@ -30,6 +31,7 @@ class BufferHandler:
         self._view = (0, 0)
         self._update_thread = None
         self._error_timer = None
+        self._indicated_syntax_error = None
         # Nodes which are active but pending to be displayed because they are
         # in a currently invisible area.
         self._pending_nodes = []
@@ -185,28 +187,36 @@ class BufferHandler:
     def _schedule_update_error_sign(self):
         if self._error_timer is not None:
             self._error_timer.cancel()
-        # If no error is present...
-        if self._parser.syntax_errors[-1] is None:
-            # ... but previously was...
-            if self._parser.syntax_errors[-2] is not None:
-                # ... update immediately.
-                self._update_error_sign()
-            # If the current and previous update happened without syntax
-            # errors, no action is required.
+        if self._indicated_syntax_error is not None:
+            self._update_error_indicator()
             return
-        # Otherwise, delay update to prevent the sign from frequently flashing
-        # while typing.
+        # Delay update to prevent the error sign from flashing while typing.
         timer = threading.Timer(self._options.error_sign_delay,
-                                self._update_error_sign)
+                                self._update_error_indicator)
         self._error_timer = timer
         timer.start()
 
-    def _update_error_sign(self):
-        self._unplace_sign(ERROR_SIGN_ID)
+    def _update_error_indicator(self):
+        cur_error = self._indicated_syntax_error
         error = self._parser.syntax_errors[-1]
+        self._indicated_syntax_error = error
+        if cur_error is not None and error is not None and \
+           (error.lineno, error.offset, error.msg) == \
+           (cur_error.lineno, cur_error.offset, cur_error.msg):
+            return
+        self._unplace_sign(ERROR_SIGN_ID)
+        self._buf.clear_highlight(ERROR_HL_ID)
         if error is None:
             return
         self._place_sign(ERROR_SIGN_ID, error.lineno, 'semshiError')
+        lineno, offset = self._error_pos(error)
+        self._buf.add_highlight(
+            'semshiErrorChar',
+            lineno - 1,
+            offset,
+            offset + 1,
+            ERROR_HL_ID,
+        )
 
     def _place_sign(self, id, line, name):
         self._vim.command('sign place %d line=%d name=%s buffer=%d' %
@@ -286,24 +296,25 @@ class BufferHandler:
             self._buf[lineno - 1] = line
         self._vim.out_write('%d nodes renamed.\n' % num)
 
-    def goto(self, kind, direction):
-        """Go to next location of type `kind` (one of {name, class, function})
-        in direction `direction` (one of {next, prev, first, last}).
-        """
+    def goto(self, what, direction=None):
+        """Go to next location of type `what` in direction `direction`."""
+        if what == 'error':
+            self._goto_error()
+            return
         from ast import ClassDef, FunctionDef, AsyncFunctionDef
         here = tuple(self._vim.current.window.cursor)
-        if kind == 'name':
+        if what == 'name':
             cur_node = self._parser.node_at(here)
             if cur_node is None:
                 return
             locs = sorted([n.pos for n in self._parser.same_nodes(
                 cur_node, use_target=self._options.self_to_attribute)])
-        elif kind == 'class':
+        elif what == 'class':
             locs = self._parser.locations_of([ClassDef])
-        elif kind == 'function':
+        elif what == 'function':
             locs = self._parser.locations_of([FunctionDef, AsyncFunctionDef])
         else:
-            raise ValueError('"%s" is not a recognized element type.' % kind)
+            raise ValueError('"%s" is not a recognized element type.' % what)
         if direction == 'first':
             new_loc = locs[0]
         elif direction == 'last':
@@ -312,10 +323,32 @@ class BufferHandler:
             new_loc = next_location(here, locs, (direction == 'prev'))
         try:
             self._vim.current.window.cursor = new_loc
-        except neovim.api.nvim.NvimError:
+        except neovim.api.NvimError:
             # This can happen when the new cursor position is outside the
             # buffer because the code wasn't re-parsed after a buffer change.
             pass
+
+    def _goto_error(self):
+        """Go to syntax error."""
+        error = self._indicated_syntax_error
+        if error is None:
+            return
+        self._vim.current.window.cursor = self._error_pos(error)
+
+    def _error_pos(self, error):
+        """Return a position for the syntax error `error` which is guaranteed
+        to be a valid position in the buffer."""
+        offset = max(1, min(error.offset,
+                            len(self._parser.lines[error.lineno - 1]))) - 1
+        return (error.lineno, offset)
+
+    def show_error(self):
+        error = self._indicated_syntax_error
+        if error is None:
+            self._vim.out_write('No syntax error to show.\n')
+            return
+        self._vim.out_write('Syntax error: %s (%d, %d)\n' %
+                            (error.msg, error.lineno, error.offset))
 
 
 def nodes_to_hl(nodes, clear=False, marked=False):

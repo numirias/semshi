@@ -322,3 +322,11 @@ def test_goto_name():
     time.sleep(SLEEP)
     vim.command('Semshi goto name prev')
     wait_for(lambda: vim.current.window.cursor == [1, 5])
+
+def test_goto_error():
+    vim = start_vim(['--cmd', 'let g:semshi#error_sign_delay = 0'], file='')
+    vim.current.buffer[:] = ['a', '+']
+    wait_for_update_thread(vim)
+    assert vim.current.window.cursor == [1, 0]
+    vim.command('Semshi goto error')
+    assert vim.current.window.cursor == [2, 0]
