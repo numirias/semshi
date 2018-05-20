@@ -54,7 +54,8 @@ class BufferHandler:
     def update(self, force=False, sync=False):
         """Update.
 
-        Start a thread which reparses the code, update highlights.
+        If `sync`, trigger update immediately, otherwise start thread to update
+        code if thread isn't running already.
         """
         if sync:
             self._update_step(force=force, sync=True)
@@ -69,6 +70,10 @@ class BufferHandler:
         thread = threading.Thread(target=self._update_loop)
         self._update_thread = thread
         thread.start()
+
+    def clear_highlights(self):
+        """Clear all highlights."""
+        self._update_step(force=True, sync=True, code='')
 
     @debug_time
     def mark_selected(self, cursor):
@@ -111,6 +116,9 @@ class BufferHandler:
     def _update_loop(self):
         try:
             while True:
+                delay_factor = self._options.update_delay_factor
+                if delay_factor > 0:
+                    time.sleep(delay_factor * len(self._parser.lines))
                 self._update_step(self._options.always_update_all_highlights)
                 if self._options.error_sign:
                     self._schedule_update_error_sign()
@@ -126,15 +134,11 @@ class BufferHandler:
             raise
 
     @debug_time
-    def _update_step(self, force=False, sync=False):
-        delay_factor = self._options.update_delay_factor
-        if delay_factor > 0:
-            time.sleep(delay_factor * len(self._parser.lines))
+    def _update_step(self, force=False, sync=False, code=None):
+        if code is None:
+            code = self._wait_for(lambda: lines_to_code(self._buf[:]), sync)
         try:
-            add, rem = self._parser.parse(
-                self._wait_for(lambda: lines_to_code(self._buf[:]), sync),
-                force,
-            )
+            add, rem = self._parser.parse(code, force)
         except UnparsableError:
             return
         # TODO If we force update, can't we just clear all pending?

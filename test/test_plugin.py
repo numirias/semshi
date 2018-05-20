@@ -323,6 +323,7 @@ def test_goto_name():
     vim.command('Semshi goto name prev')
     wait_for(lambda: vim.current.window.cursor == [1, 5])
 
+
 def test_goto_error():
     vim = start_vim(['--cmd', 'let g:semshi#error_sign_delay = 0'], file='')
     vim.current.buffer[:] = ['a', '+']
@@ -330,3 +331,12 @@ def test_goto_error():
     assert vim.current.window.cursor == [1, 0]
     vim.command('Semshi goto error')
     assert vim.current.window.cursor == [2, 0]
+
+
+def test_clear():
+    vim = start_vim(file='')
+    vim.current.buffer[:] = ['aaa']
+    time.sleep(SLEEP)
+    vim.command('Semshi clear')
+    num_nodes = host_eval(vim)('len(plugin._cur_handler._parser._nodes)')
+    assert num_nodes == 0

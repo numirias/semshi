@@ -109,6 +109,10 @@ class Plugin:
         self._cur_handler.update(force=True, sync=True)
 
     @subcommand
+    def clear(self):
+        self._cur_handler.clear_highlights()
+
+    @subcommand
     def rename(self, new_name=None):
         self._cur_handler.rename(self._vim.current.window.cursor, new_name)
 
@@ -161,10 +165,9 @@ class Options:
 
     def __init__(self, vim):
         for key, val_default in Options._defaults.items():
-            try:
-                val = vim.vars['semshi#' + key]
-            except neovim.api.NvimError: # i.e. KeyError
-                val = vim.vars['semshi#' + key] = val_default
+            val = vim.vars.get('semshi#' + key, val_default)
+            # vim.vars doesn't support setdefault(), so set value manually
+            vim.vars['semshi#' + key] = val
             try:
                 converter = getattr(Options, '_convert_' + key)
             except AttributeError:

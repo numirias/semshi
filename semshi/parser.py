@@ -56,7 +56,8 @@ class Parser:
 
     def _parse(self, code, force=False):
         """Parse code and return tuple (`add`, `remove`) of added and removed
-        nodes since last run.
+        nodes since last run. With `force`, all highlights are refreshed, even
+        those that didn't change.
         """
         self._locations.clear()
         old_lines = self.lines

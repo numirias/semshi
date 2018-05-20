@@ -108,6 +108,7 @@ The following commands can be executed via `:Semshi <command>`:
 | --- | --- |
 | `version` | Show version. |
 | `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
+| `clear` | Clear all highlights in current buffer. |
 | `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. |
 | `error` | Echo current syntax error message. |
 | `goto error` | Jump to current syntax error. |
