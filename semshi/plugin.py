@@ -87,6 +87,11 @@ class Plugin:
         if self._cur_handler.enabled:
             self._cur_handler.update()
 
+    @neovim.autocmd('VimLeave', pattern=_pattern, sync=True)
+    @if_active
+    def event_vim_leave(self):
+        self._cur_handler.shutdown()
+
     @neovim.command('Semshi', nargs='*', complete='customlist,SemshiComplete',
                     sync=True)
     def cmd_semshi(self, args):

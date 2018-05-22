@@ -100,7 +100,7 @@ class BufferHandler:
 
     def _wait_for(self, func, sync=False):
         """Return `func()`. If not `sync`, run `func` in async context and
-        block until result is received.
+        block until result is available.
 
         Required for when we need the result of an API call from a thread.
         """
@@ -360,6 +360,11 @@ class BufferHandler:
             return
         self._vim.out_write('Syntax error: %s (%d, %d)\n' %
                             (error.msg, error.lineno, error.offset))
+
+    def shutdown(self):
+        # Cancel the error timer so vim quits immediately
+        if self._error_timer is not None:
+            self._error_timer.cancel()
 
 
 def nodes_to_hl(nodes, clear=False, marked=False):
