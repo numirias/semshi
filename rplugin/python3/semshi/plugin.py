@@ -174,7 +174,7 @@ class Options:
         'active': True,
         'excluded_buffers': [],
         'excluded_hl_groups': ['local'],
-        'mark_selected_nodes': True,
+        'mark_selected_nodes': 1,
         'no_default_builtin_highlight': True,
         'simplify_markup': True,
         'error_sign': True,
