@@ -146,6 +146,10 @@ nmap <silent> <leader>ge :Semshi goto error<CR>
 
 ## FAQ
 
+### How does Semshi compare to refactoring/completion plugins like [jedi-vim](https://github.com/davidhalter/jedi-vim)?
+
+Semshi's primary focus is to provide reasonably fast semantic code highlighting in order to make code easier to read, so it works great alongside refactoring and completion libraries like Jedi -- it's not meant to replace them at all. 
+
 ### Is Vim 8 supported?
 
 No. Semshi relies on Neovim's fast highlighting API to update highlights quickly for which there is currently no equivalent in regular Vim. If you think this can be implemented for Vim 8, let me know.
