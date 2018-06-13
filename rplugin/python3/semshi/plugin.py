@@ -7,10 +7,16 @@ from .node import groups
 
 
 def if_active(func):
-    """Decorator to execute `func` only if the plugin is active."""
+    """Decorator to execute `func` only if the plugin is active.
+
+    Initializes the plugin if it's uninitialized.
+    """
     @wraps(func)
     def wrapper(self):
-        if not self._options.active: # pylint: disable=protected-access
+        # pylint: disable=protected-access
+        if self._options is None:
+            self._init_with_vim()
+        if not self._options.active:
             return
         func(self)
     return wrapper
@@ -39,16 +45,23 @@ class Plugin:
         self._cur_handler = None
         self._options = None
 
+    def _init_with_vim(self):
+        """Initialize with vim available.
+
+        Initialization code which interacts with vim can't be safely put in
+        __init__ because vim itself may not be fully started up.
+        """
+        self._options = Options(self._vim)
+        if not self._options.active:
+            return
+        self._switch_handler()
+        self._update_viewport()
+
     # Must not be async because we have to make sure that switching the buffer
     # handler is completed before other events are handled.
     @neovim.autocmd('BufEnter', pattern=_pattern, sync=True)
+    @if_active
     def event_buf_enter(self):
-        if self._options is None:
-            # We'd want to do initialization on VimEnter, but that event may be
-            # called *after* BufEnter, so we need to trigger it here.
-            self._options = Options(self._vim)
-        if not self._options.active:
-            return
         self._switch_handler()
         self._update_viewport()
         if self._cur_handler.enabled:
