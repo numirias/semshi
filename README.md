@@ -107,7 +107,6 @@ The following commands can be executed via `:Semshi <command>`:
 
 | Command | Description |
 | --- | --- |
-| `version` | Show version. |
 | `enable` | Enable highlighting for current buffer. |
 | `disable` | Disable highlighting for current buffer. |
 | `toggle` | Toggle highlighting for current buffer. |

@@ -125,10 +125,6 @@ class Plugin:
         return [c for c in _subcommands if c.startswith(lead)]
 
     @subcommand
-    def version(self):
-        self._vim.out_write('semshi v0.0\n')
-
-    @subcommand
     def enable(self):
         self._cur_handler.enabled = True
         self.highlight()
