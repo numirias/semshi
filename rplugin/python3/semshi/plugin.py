@@ -63,29 +63,29 @@ class Plugin:
     @if_active
     def event_buf_enter(self):
         self._switch_handler()
-        self._update_viewport()
         if self._cur_handler.enabled:
+            self._update_viewport()
             self._cur_handler.update()
 
     @neovim.autocmd('VimResized', pattern=_pattern, sync=False)
     @if_active
     def event_vim_resized(self):
-        self._update_viewport()
         if self._cur_handler.enabled:
+            self._update_viewport()
             self._mark_selected()
 
     @neovim.autocmd('CursorMoved', pattern=_pattern, sync=False)
     @if_active
     def event_cursor_moved(self):
-        self._update_viewport()
         if self._cur_handler.enabled:
+            self._update_viewport()
             self._mark_selected()
 
     @neovim.autocmd('CursorMovedI', pattern=_pattern, sync=False)
     @if_active
     def event_cursor_moved_insert(self):
-        self._update_viewport()
         if self._cur_handler.enabled:
+            self._update_viewport()
             self._mark_selected()
 
     @neovim.autocmd('TextChanged', pattern=_pattern, sync=False)
@@ -126,6 +126,7 @@ class Plugin:
 
     @subcommand
     def enable(self):
+        self._update_viewport()
         self._cur_handler.enabled = True
         self.highlight()
 
