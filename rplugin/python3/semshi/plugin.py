@@ -139,6 +139,13 @@ class Plugin:
         self.clear()
 
     @subcommand
+    def toggle(self):
+        if self._cur_handler.enabled:
+            self.disable()
+        else:
+            self.enable()
+
+    @subcommand
     def highlight(self):
         self._cur_handler.update(force=True, sync=True)
 
