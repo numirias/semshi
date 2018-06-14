@@ -82,7 +82,6 @@ def host_eval(vim, tick=False):
 
 def test_commands(vim):
     vim.command('Semshi')
-    vim.command('Semshi version')
 
 
 def test_no_python_file(vim, host_eval):
