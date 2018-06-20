@@ -54,7 +54,7 @@ You can set these options in your vimrc (`~/.config/nvim/init.vim`):
 | Option | Default | Description |
 | --- | --- | --- |
 | `g:semshi#active` | `v:true` | Activate event handlers. |
-| `g:semshi#excluded_buffers` | `[]` | List of buffer names (glob matching) in which to disable highlighting. (Use `['*']` to disable initial highlighting in all files. You can still re-enable it on demand with  `Semshi enable`.) |
+| `g:semshi#excluded_buffers` | `[]` | List of buffer names (glob matching) in which to disable highlighting. (Use `['*']` to disable initial highlighting in all files. You can still re-enable it on demand with  `:Semshi enable`.) |
 | `g:semshi#excluded_hl_groups` | `['local']` | List of highlight groups not to highlight. Choose from `local`, `unresolved`, `attribute`, `builtin`, `free`, `global`, `parameter`, `parameterUnused`, `self`, `imported`. (It's recommended to keep `local` in the list because highlighting all locals in a large file can cause performance issues.) |
 | `g:semshi#mark_selected_nodes ` | `1` | Mark selected nodes (those with the same name and scope as the one under the cursor). Set to `2` to highlight the node currently under the cursor, too. |
 | `g:semshi#no_default_builtin_highlight` | `v:true` | Disable highlighting of builtins (`list`, `len`, etc.) by Vim's own Python syntax highlighter, because that's Semshi's job. If you turn it off, Vim may add incorrect highlights. |
@@ -94,6 +94,12 @@ function MyCustomHighlights()
     hi semshiGlobal      ctermfg=red guifg=#ff0000
 endfunction
 autocmd FileType python call MyCustomHighlights()
+```
+
+Also, if you want the highlight groups to persist across colorscheme switches, add:
+
+```VimL
+autocmd ColorScheme * call MyCustomHighlights()
 ```
 
 ## Usage
