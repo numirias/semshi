@@ -116,6 +116,7 @@ The following commands can be executed via `:Semshi <command>`:
 | `enable` | Enable highlighting for current buffer. |
 | `disable` | Disable highlighting for current buffer. |
 | `toggle` | Toggle highlighting for current buffer. |
+| `pause` | Like `disable`, but doesn't clear the highlights. |
 | `highlight` | Force update of highlights for current buffer. (Useful when for some reason highlighting hasn't been triggered.)  |
 | `clear` | Clear all highlights in current buffer. |
 | `rename [new_name]` | Rename node under the cursor. If `new_name` isn't set, you're interactively prompted for the new name. |

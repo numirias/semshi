@@ -357,3 +357,14 @@ def test_enable_disable():
     assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 0
     vim.command('Semshi enable')
     assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 1
+
+
+def test_pause():
+    vim = start_vim(file='')
+    vim.current.buffer[:] = ['aaa']
+    time.sleep(SLEEP)
+    vim.command('Semshi pause')
+    assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 1
+    vim.current.buffer[:] = ['aaa, bbb']
+    time.sleep(SLEEP)
+    assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 1

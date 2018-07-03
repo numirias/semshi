@@ -143,6 +143,10 @@ class Plugin:
             self.enable()
 
     @subcommand
+    def pause(self):
+        self._cur_handler.enabled = False
+
+    @subcommand
     def highlight(self):
         self._cur_handler.update(force=True, sync=True)
 
