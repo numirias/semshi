@@ -231,11 +231,11 @@ class BufferHandler:
 
     def _place_sign(self, id, line, name):
         self._vim.command('sign place %d line=%d name=%s buffer=%d' %
-                          (id, line, name, self._buf_num), async=True)
+                          (id, line, name, self._buf_num), async_=True)
 
     def _unplace_sign(self, id):
         self._vim.command('sign unplace %d buffer=%d' %
-                          (id, self._buf_num), async=True)
+                          (id, self._buf_num), async_=True)
 
     @debug_time(None, lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
     def _update_hls(self, add, clear):
@@ -271,7 +271,7 @@ class BufferHandler:
         # https://github.com/neovim/python-client/issues/310
         batch_size = 3000
         for i in range(0, len(calls), batch_size):
-            self._vim.api.call_atomic(calls[i:i + batch_size], async=True)
+            self._vim.api.call_atomic(calls[i:i + batch_size], async_=True)
 
     def rename(self, cursor, new_name=None):
         """Rename node at `cursor` to `new_name`. If `new_name` is None, prompt
