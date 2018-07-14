@@ -284,7 +284,7 @@ def test_rename():
     # The command blocks until an input is received, so we need to call async
     # and sleep
     time.sleep(SLEEP)
-    vim.command('Semshi rename', async=True)
+    vim.command('Semshi rename', async_=True)
     time.sleep(SLEEP)
     vim.feedkeys('CC\n')
     time.sleep(SLEEP)
