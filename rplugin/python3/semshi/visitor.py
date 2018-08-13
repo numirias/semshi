@@ -73,13 +73,13 @@ class Visitor:
         if type_ is Name:
             self._new_name(node)
             return
-        elif type_ is Attribute:
+        if type_ is Attribute:
             self._add_attribute(node)
             self.visit(node.value)
             return
-        elif type_ in SKIP:
+        if type_ in SKIP:
             return
-        elif type_ is Try:
+        if type_ is Try:
             self._visit_try(node)
         elif type_ is ExceptHandler:
             self._visit_except(node)
