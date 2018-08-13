@@ -1,5 +1,6 @@
 import ast
-from collections import Iterable, deque
+from collections import deque
+from collections.abc import Iterable
 from functools import singledispatch
 from keyword import kwlist
 import symtable
