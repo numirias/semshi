@@ -144,11 +144,13 @@ nmap <silent> <leader>ge :Semshi goto error<CR>
 
 ## Limitations
 
-- Some features such as wildcard imports (`from foo import *`) and fancy metaprogramming may hide names which Semshi won't pick up and may show as unresolved or highlight incorrectly.
+- Some features such as wildcard imports (`from foo import *`) and fancy metaprogramming may hide names which Semshi won't pick up and may therefore show as unresolved or highlight incorrectly.
 
 - Whenever a syntax error is present (which can't be automatically compensated), highlights can't be updated. So you may experience that highlights are temporarily incorrect while typing.
 
 - Although Semshi does its work asynchronously and is not *that* slow, editing large files may stress your CPU and cause delayed highlighting.
+
+- Semshi works with the same syntax version as your Neovim Python 3 provider. This means you can't use Semshi on code that's Python 2-only or uses incompatible syntax features.
 
 
 ## FAQ
