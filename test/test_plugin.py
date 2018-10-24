@@ -368,3 +368,9 @@ def test_pause():
     vim.current.buffer[:] = ['aaa, bbb']
     time.sleep(SLEEP)
     assert host_eval(vim)('len(plugin._cur_handler._parser._nodes)') == 1
+
+
+def test_bug_21():
+    vim = start_vim(file='/tmp/foo.ext')
+    with pytest.raises(neovim.api.nvim.NvimError, match='.*match pattern.*'):
+        vim.command('Semshi goto error')
