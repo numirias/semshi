@@ -24,8 +24,17 @@ def if_active(func):
 _subcommands = {}
 
 def subcommand(func):
-    _subcommands[func.__name__] = func
-    return func
+    """Register `func` as a ":Semshi [...]" subcommand."""
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        # pylint: disable=protected-access
+        if self._cur_handler is None:
+            self.echo_error('Semshi doesn\'t currently handle this file. '
+                            '(match pattern: "%s")' % Plugin._pattern)
+            return
+        func(self, *args, **kwargs)
+    _subcommands[func.__name__] = wrapper
+    return wrapper
 
 
 @neovim.plugin
@@ -56,6 +65,14 @@ class Plugin:
             return
         self._switch_handler()
         self._update_viewport()
+
+    def echo(self, *msgs):
+        msg = ' '.join([str(m) for m in msgs])
+        self._vim.out_write(msg + '\n')
+
+    def echo_error(self, *msgs):
+        msg = ' '.join([str(m) for m in msgs])
+        self._vim.err_write(msg + '\n')
 
     # Must not be async because we have to make sure that switching the buffer
     # handler is completed before other events are handled.
@@ -109,12 +126,12 @@ class Plugin:
                     sync=True)
     def cmd_semshi(self, args):
         if not args:
-            self._vim.out_write('This is semshi.\n')
+            self.echo('This is semshi.')
             return
         try:
             func = _subcommands[args[0]]
         except KeyError:
-            self._vim.err_write('Subcommand not found: %s\n' % args[0])
+            self.echo_error('Subcommand not found: %s' % args[0])
             return
         func(self, *args[1:])
 
