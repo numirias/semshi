@@ -7,13 +7,13 @@ jobs:
   include:
   - python: 3.6
     env: TOXENV=lint
+before_install:
+  - wget -O nvim https://github.com/neovim/neovim/releases/download/v0.3.1/nvim.appimage
+  - chmod +x nvim
+  - export PATH="$PATH:."
 install:
-  - pip install tox-travis codecov
+  - pip3 install tox-travis codecov
 script:
+  - nvim --version
   - tox
   - codecov
-before_install:
-  - sudo apt-get -qq install software-properties-common
-  - sudo add-apt-repository -y ppa:neovim-ppa/unstable
-  - sudo apt-get -qq update
-  - sudo apt-get install -y neovim
