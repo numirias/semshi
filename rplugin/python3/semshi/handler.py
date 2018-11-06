@@ -116,6 +116,17 @@ class BufferHandler:
         event.wait()
         return res
 
+    def _wrap_async(self, func):
+        """
+        Wraps `func` so that invocation of `func(args, kwargs)` happens
+        from the main thread. This is a requirement of neovim API when
+        function call happens from other threads.
+        Related issue: https://github.com/numirias/semshi/issues/25
+        """
+        def wrapper(*args, **kwargs):
+            return self._vim.async_call(func, *args, **kwargs)
+        return wrapper
+
     def _update_loop(self):
         try:
             while True:
@@ -216,12 +227,12 @@ class BufferHandler:
            (cur_error.lineno, cur_error.offset, cur_error.msg):
             return
         self._unplace_sign(ERROR_SIGN_ID)
-        self._buf.clear_highlight(ERROR_HL_ID)
+        self._wrap_async(self._buf.clear_highlight)(ERROR_HL_ID)
         if error is None:
             return
         self._place_sign(ERROR_SIGN_ID, error.lineno, 'semshiError')
         lineno, offset = self._error_pos(error)
-        self._buf.add_highlight(
+        self._wrap_async(self._buf.add_highlight)(
             'semshiErrorChar',
             lineno - 1,
             offset,
@@ -230,12 +241,16 @@ class BufferHandler:
         )
 
     def _place_sign(self, id, line, name):
-        self._vim.command('sign place %d line=%d name=%s buffer=%d' %
-                          (id, line, name, self._buf_num), async_=True)
+        self._wrap_async(self._vim.command)(
+            'sign place %d line=%d name=%s buffer=%d' % (
+                id, line, name, self._buf_num),
+            async_=True)
 
     def _unplace_sign(self, id):
-        self._vim.command('sign unplace %d buffer=%d' %
-                          (id, self._buf_num), async_=True)
+        self._wrap_async(self._vim.command)(
+            'sign unplace %d buffer=%d' % (
+                id, self._buf_num),
+            async_=True)
 
     @debug_time(None, lambda _, a, c: '+%d, -%d' % (len(a), len(c)))
     def _update_hls(self, add, clear):
@@ -259,7 +274,7 @@ class BufferHandler:
         if not node_or_nodes:
             return
         if not isinstance(node_or_nodes, list):
-            buf.clear_highlight(*node_or_nodes)
+            self._wrap_async(buf.clear_highlight)(*node_or_nodes)
             return
         # Don't specify line range to clear explicitly because we can't
         # reliably determine the correct range
@@ -270,8 +285,9 @@ class BufferHandler:
         # Need to update in small batches to avoid
         # https://github.com/neovim/python-client/issues/310
         batch_size = 3000
+        call_atomic = self._wrap_async(self._vim.api.call_atomic)
         for i in range(0, len(calls), batch_size):
-            self._vim.api.call_atomic(calls[i:i + batch_size], async_=True)
+            call_atomic(calls[i:i + batch_size], async_=True)
 
     def rename(self, cursor, new_name=None):
         """Rename node at `cursor` to `new_name`. If `new_name` is None, prompt
