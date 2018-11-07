@@ -144,28 +144,32 @@ nmap <silent> <leader>ge :Semshi goto error<CR>
 
 ## Limitations
 
-- Some features such as wildcard imports (`from foo import *`) and fancy metaprogramming may hide names which Semshi won't pick up and may therefore show as unresolved or highlight incorrectly.
+- Features like wildcard imports (`from foo import *`) or fancy metaprogramming may hide name bindings from simple static analysis. In that case, Semshi can't pick them up and may show these names as unresolved or highlight incorrectly.
 
-- Whenever a syntax error is present (which can't be automatically compensated), highlights can't be updated. So you may experience that highlights are temporarily incorrect while typing.
+- While a syntax error is present (which can't be automatically compensated), Semshi can't update any highlights. So, highlights may be temporarily incorrect or misplaced while typing.
 
-- Although Semshi does its work asynchronously and is not *that* slow, editing large files may stress your CPU and cause delayed highlighting.
+- Although Semshi parses the code asynchronously and is not *that* slow, editing large files may stress your CPU and cause highlighting delays.
 
-- Semshi works with the same syntax version as your Neovim Python 3 provider. This means you can't use Semshi on code that's Python 2-only or uses incompatible syntax features.
+- Semshi works with the same syntax version as your Neovim Python 3 provider. This means you can't use Semshi on code that's Python 2-only or uses incompatible syntax features. (Support for different versions is planned. See [#19](https://github.com/numirias/semshi/issues/19))
 
 
 ## FAQ
 
 ### How does Semshi compare to refactoring/completion plugins like [jedi-vim](https://github.com/davidhalter/jedi-vim)?
 
-Semshi's primary focus is to provide reasonably fast semantic code highlighting in order to make code easier to read, so it works great alongside refactoring and completion libraries like Jedi -- it's not meant to replace them at all. 
+Semshi's primary focus is to provide reasonably fast semantic highlighting to make code easier to read. It's meant to replace your syntax highlighter, not your refactoring tools. So, Semshi works great alongside refactoring and completion libraries like Jedi.
 
 ### Is Vim 8 supported?
 
-No. Semshi relies on Neovim's fast highlighting API to update highlights quickly for which there is currently no equivalent in regular Vim. If you think this can be implemented for Vim 8, let me know.
+No. Semshi relies on Neovim's fast highlighting API to quickly update lots of highlights. Regular Vim unfortunately doesn't have an equivalent API. (If you think this can be implemented for Vim 8, let me know.)
 
 ### Is Python 2 supported?
 
-No. Currently, support for Python < 3.5 isn't planned. Migrate your code already!
+No. [Migrate your code already!](https://pythonclock.org/) (Support for Python < 3.5 *may* be coming, but don't expect it too soon. See [#19](https://github.com/numirias/semshi/issues/19))
+
+### Semshi is too slow.
+
+Semshi should be snappy on reasonably-sized Python files with ordinary hardware. If you experience performance issues, please file an issue. Also note that other plugins using the Python provider (e.g. [deoplete.nvim](https://github.com/Shougo/deoplete.nvim)) may slow down Semshi significantly.
 
 ### There are some incorrect extra highlights.
 
@@ -177,4 +181,4 @@ As you type code, you introduce temporary syntax errors, e.g. when opening a new
 
 ## Contributing
 
-I absolutely need your help with testing and improving Semshi. If you found a bug, have a suggestion, or just want to give usage feedback, please don't hesitate to [file an issue](https://github.com/numirias/semshi/issues/new).
+I absolutely need your help with testing and improving Semshi. If you found a bug or have a suggestion, please don't hesitate to [file an issue](https://github.com/numirias/semshi/issues/new).
