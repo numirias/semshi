@@ -32,7 +32,7 @@ In the above example, you can easily distinguish arguments (blue), instance attr
 
 - You need Neovim with Python 3 support (`:echo has("python3")`). To install the Python provider run:
 
-      pip3 install neovim --upgrade 
+      pip3 install pynvim --upgrade 
     
 - Add `numirias/semshi` via your plugin manager. If you're using [vim-plug](https://github.com/junegunn/vim-plug), add... 
 

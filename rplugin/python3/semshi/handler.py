@@ -3,7 +3,10 @@ from fnmatch import fnmatch
 import threading
 import time
 
-import neovim
+try:
+    import pynvim as neovim
+except ImportError:
+    import neovim
 
 from .parser import Parser, UnparsableError
 from .util import logger, debug_time, lines_to_code
