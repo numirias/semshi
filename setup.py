@@ -14,7 +14,7 @@ setup(
     python_requires='>=3',
     install_requires=[
         'pytest>=3.3.2',
-        'neovim',
+        'pynvim>=0.3.1',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

@@ -1,6 +1,10 @@
 import gc
 
-import neovim
+try:
+    import pynvim as neovim
+except ImportError:
+    import neovim
+import pytest
 
 
 @neovim.plugin

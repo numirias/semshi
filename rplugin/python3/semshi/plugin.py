@@ -1,6 +1,9 @@
 from functools import wraps
 
-import neovim
+try:
+    import pynvim as neovim
+except ImportError:
+    import neovim
 
 from .handler import BufferHandler
 from .node import groups
