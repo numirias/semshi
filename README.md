@@ -40,10 +40,9 @@ In the above example, you can easily distinguish arguments (blue), instance attr
       
   ...and run `:PlugInstall`.
 
-- You may also need to run `:UpdateRemotePlugins` manually to update the plugin manifest.
+- You may also need to run `:UpdateRemotePlugins` to update the plugin manifest.
 
-- (If you insist on manual installation, download the source and place it in a directory in your Vim runtime path.)
-
+- Using [deoplete.nvim](https://github.com/Shougo/deoplete.nvim)? [Make sure it doesn't slow down Semshi!](#semshi-is-slow-with-deopletenvim)
 
 ## Configuration
 
@@ -169,7 +168,15 @@ No. [Migrate your code already!](https://pythonclock.org/) (Support for Python <
 
 ### Semshi is too slow.
 
-Semshi should be snappy on reasonably-sized Python files with ordinary hardware. If you experience performance issues, please file an issue. Also note that other plugins using the Python provider (e.g. [deoplete.nvim](https://github.com/Shougo/deoplete.nvim)) may slow down Semshi significantly.
+Semshi should be snappy on reasonably-sized Python files with ordinary hardware. But some plugins hooking the same events (e.g. [deoplete.nvim](https://github.com/Shougo/deoplete.nvim)) may cause significant delays. If you experience any performance problems, please file an issue.
+
+### Semshi is slow with [deoplete.vim](https://github.com/Shougo/deoplete.nvim).
+
+Completion triggers may block Semshi from highlighting instantly. Try to increase Deoplete's `auto_complete_delay`, e.g.:
+
+```VimL
+let g:deoplete#auto_complete_delay = 100
+```
 
 ### There are some incorrect extra highlights.
 
