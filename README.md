@@ -42,7 +42,7 @@ In the above example, you can easily distinguish arguments (blue), instance attr
 
 - You may also need to run `:UpdateRemotePlugins` to update the plugin manifest.
 
-- Using [deoplete.nvim](https://github.com/Shougo/deoplete.nvim)? [Make sure it doesn't slow down Semshi!](#semshi-is-slow-with-deopletenvim)
+- Using [deoplete.nvim](https://github.com/Shougo/deoplete.nvim)? [Make sure it doesn't slow down Semshi.](#semshi-is-slow-together-with-deopletenvim)
 
 ## Configuration
 
@@ -170,7 +170,7 @@ No. [Migrate your code already!](https://pythonclock.org/) (Support for Python <
 
 Semshi should be snappy on reasonably-sized Python files with ordinary hardware. But some plugins hooking the same events (e.g. [deoplete.nvim](https://github.com/Shougo/deoplete.nvim)) may cause significant delays. If you experience any performance problems, please file an issue.
 
-### Semshi is slow with [deoplete.vim](https://github.com/Shougo/deoplete.nvim).
+### Semshi is slow together with [deoplete.nvim](https://github.com/Shougo/deoplete.nvim).
 
 Completion triggers may block Semshi from highlighting instantly. Try to increase Deoplete's `auto_complete_delay`, e.g.:
 
