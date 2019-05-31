@@ -87,6 +87,13 @@ class Plugin:
             self._update_viewport()
             self._cur_handler.update()
 
+    @neovim.autocmd('FileType', pattern='python', sync=True)
+    @if_active
+    def event_file_type(self):
+        if self._cur_handler.enabled:
+            self._update_viewport()
+            self._mark_selected()
+
     @neovim.autocmd('VimResized', pattern=_pattern, sync=False)
     @if_active
     def event_vim_resized(self):
