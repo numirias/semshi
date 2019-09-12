@@ -313,7 +313,11 @@ class Parser:
         except KeyError:
             pass
         visitor = _LocationCollectionVisitor(types)
-        visitor.visit(ast.parse(lines_to_code(self.lines)))
+        try:
+            ast_ = ast.parse(lines_to_code(self.lines))
+        except SyntaxError:
+            return []
+        visitor.visit(ast_)
         locations = visitor.locations
         self._locations[types_set] = locations
         return locations
