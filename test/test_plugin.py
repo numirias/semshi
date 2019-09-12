@@ -347,6 +347,17 @@ def test_goto_name():
     wait_for(lambda: vim.current.window.cursor == [1, 5])
 
 
+def test_goto_hl_group():
+    vim = start_vim(file='')
+    vim.current.buffer[:] = [
+        'foo = 1',
+        'def x(y): pass',
+    ]
+    time.sleep(SLEEP)
+    vim.command('Semshi goto parameterUnused first')
+    wait_for(lambda: vim.current.window.cursor == [2, 6])
+
+
 def test_goto_error():
     vim = start_vim(['--cmd', 'let g:semshi#error_sign_delay = 0'], file='')
     vim.current.buffer[:] = ['a', '+']

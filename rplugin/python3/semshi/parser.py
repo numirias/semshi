@@ -304,7 +304,9 @@ class Parser:
             return []
         return self.same_nodes(cur_node, mark_original, use_target)
 
-    def locations_of(self, types):
+    def locations_by_node_types(self, types):
+        """Return locations of all AST nodes in code whose type is contained in
+        `types`."""
         types_set = frozenset(types)
         try:
             return self._locations[types_set]
@@ -315,6 +317,10 @@ class Parser:
         locations = visitor.locations
         self._locations[types_set] = locations
         return locations
+
+    def locations_by_hl_group(self, group):
+        """Return locations of all nodes whose highlight group is `group`."""
+        return [n.pos for n in self._nodes if n.hl_group == group]
 
 
 class _LocationCollectionVisitor(ast.NodeVisitor):
