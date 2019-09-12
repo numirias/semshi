@@ -122,6 +122,7 @@ The following commands can be executed via `:Semshi <command>`:
 | `error` | Echo current syntax error message. |
 | `goto error` | Jump to current syntax error. |
 | `goto (name\|function\|class) (next\|prev\|first\|last)` | Jump to next/previous/first/last name/function/class. (See below for sample mappings.) |
+| `goto [highlight_group] (next\|prev\|first\|last)` | Jump to next/previous/first/last node with given highlight group. (Groups: `local`, `unresolved`, `attribute`, `builtin`, `free`, `global`, `parameter`, `parameterUnused`, `self`, `imported`)  |
 
 Here are some possible mappings:
 
@@ -136,6 +137,9 @@ nmap <silent> <leader>C :Semshi goto class prev<CR>
 
 nmap <silent> <leader>f :Semshi goto function next<CR>
 nmap <silent> <leader>F :Semshi goto function prev<CR>
+
+nmap <silent> <leader>gu :Semshi goto unresolved first<CR>
+nmap <silent> <leader>gp :Semshi goto parameterUnused first<CR>
 
 nmap <silent> <leader>ee :Semshi error<CR>
 nmap <silent> <leader>ge :Semshi goto error<CR>

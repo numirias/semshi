@@ -6,7 +6,7 @@ except ImportError:
     import neovim
 
 from .handler import BufferHandler
-from .node import groups
+from .node import hl_groups
 
 
 def if_active(func):
@@ -242,6 +242,6 @@ class Options:
     @staticmethod
     def _convert_excluded_hl_groups(items):
         try:
-            return [groups[g] for g in items]
+            return [hl_groups[g] for g in items]
         except KeyError as e:
             raise Exception('"%s" is an unknown highlight group.' % e.args[0])

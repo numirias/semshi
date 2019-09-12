@@ -2,11 +2,11 @@ import builtins
 from itertools import count
 
 
-groups = {}
+hl_groups = {}
 
 def group(s):
     label = 'semshi' + s[0].capitalize() + s[1:]
-    groups[s] = label
+    hl_groups[s] = label
     return label
 
 UNRESOLVED = group('unresolved')

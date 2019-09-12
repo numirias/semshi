@@ -10,7 +10,7 @@ except ImportError:
 
 from .parser import Parser, UnparsableError
 from .util import logger, debug_time, lines_to_code
-from .node import Node, SELECTED
+from .node import Node, SELECTED, hl_groups
 
 
 ERROR_SIGN_ID = 314000
@@ -340,11 +340,16 @@ class BufferHandler:
             locs = sorted([n.pos for n in self._parser.same_nodes(
                 cur_node, use_target=self._options.self_to_attribute)])
         elif what == 'class':
-            locs = self._parser.locations_of([ClassDef])
+            locs = self._parser.locations_by_node_types([ClassDef])
         elif what == 'function':
-            locs = self._parser.locations_of([FunctionDef, AsyncFunctionDef])
+            locs = self._parser.locations_by_node_types([FunctionDef,
+                                                         AsyncFunctionDef])
+        elif what in hl_groups:
+            locs = self._parser.locations_by_hl_group(hl_groups[what])
         else:
             raise ValueError('"%s" is not a recognized element type.' % what)
+        if not locs:
+            return
         if direction == 'first':
             new_loc = locs[0]
         elif direction == 'last':
