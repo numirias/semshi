@@ -144,7 +144,7 @@ class BufferHandler:
                 self._add_visible_hls()
                 self._viewport_changed = False
         except Exception:
-            import traceback
+            import traceback # pylint: disable=import-outside-toplevel
             logger.error('Exception: %s', traceback.format_exc())
             raise
 
