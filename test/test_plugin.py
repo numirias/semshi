@@ -20,7 +20,7 @@ def plugin_dir(tmpdir_factory):
 @pytest.fixture(scope='module', autouse=True)
 def register_plugin(plugin_dir):
     os.environ['NVIM_RPLUGIN_MANIFEST'] = str(plugin_dir.join('rplugin.vim'))
-    child_argv = ['nvim', '-u', VIMRC, '--embed']
+    child_argv = ['nvim', '-u', VIMRC, '--embed', '--headless']
     vim = neovim.attach('child', argv=child_argv)
     vim.command('UpdateRemotePlugins')
     vim.quit()
@@ -69,7 +69,7 @@ class WrappedVim:
 
 @pytest.fixture(scope='function')
 def vim():
-    argv = ['nvim', '-u', VIMRC, '--embed']
+    argv = ['nvim', '-u', VIMRC, '--embed', '--headless']
     vim = neovim.attach('child', argv=argv)
     return WrappedVim(vim)
 
@@ -77,7 +77,7 @@ def vim():
 def start_vim(argv=None, file=None):
     if argv is None:
         argv = []
-    argv = ['nvim', '-u', VIMRC, '--embed', *argv]
+    argv = ['nvim', '-u', VIMRC, '--embed', '--headless', *argv]
     vim = neovim.attach('child', argv=argv)
     if file is not None:
         fn = file or '/tmp/foo.py' # TODO Use relaible tmp path
