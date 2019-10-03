@@ -1,5 +1,4 @@
 from collections import defaultdict
-from fnmatch import fnmatch
 import threading
 import time
 
@@ -42,8 +41,9 @@ class BufferHandler:
         # Nodes which are currently marked as a selected. We keep track of them
         # to check if they haven't changed between updates.
         self._selected_nodes = []
-        self.enabled = not any(fnmatch(buf.name, pattern) for pattern in
-                               self._options.excluded_buffers)
+
+    def __repr__(self):
+        return '<BufferHandler(%d)>' % self._buf_num
 
     def viewport(self, start, stop):
         """Set viewport to line range from `start` to `stop` and add highlights

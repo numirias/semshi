@@ -1,4 +1,4 @@
-from functools import wraps
+from functools import partial, wraps
 
 try:
     import pynvim as neovim
@@ -9,31 +9,22 @@ from .handler import BufferHandler
 from .node import hl_groups
 
 
-def if_active(func):
-    """Decorator to execute `func` only if the plugin is active.
-
-    Initializes the plugin if it's uninitialized.
-    """
-    @wraps(func)
-    def wrapper(self):
-        # pylint: disable=protected-access
-        if self._options is None:
-            self._init_with_vim()
-        if not self._options.active:
-            return
-        func(self)
-    return wrapper
-
 _subcommands = {}
 
-def subcommand(func):
-    """Register `func` as a ":Semshi [...]" subcommand."""
+
+def subcommand(func=None, needs_handler=False, silent_fail=True):
+    """Decorator to register `func` as a ":Semshi [...]" subcommand."""
+    if func is None:
+        return partial(
+            subcommand, needs_handler=needs_handler, silent_fail=silent_fail)
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         # pylint: disable=protected-access
-        if self._cur_handler is None:
-            self.echo_error('Semshi doesn\'t currently handle this file. '
-                            '(match pattern: "%s")' % Plugin._pattern)
+        if self._options is None:
+            self._init_with_vim()
+        if needs_handler and self._cur_handler is None:
+            if not silent_fail:
+                self.echo_error('Semshi is not enabled in this buffer!')
             return
         func(self, *args, **kwargs)
     _subcommands[func.__name__] = wrapper
@@ -47,12 +38,9 @@ class Plugin:
     The plugin handles vim events and commands, and delegates them to a buffer
     handler. (Each buffer is handled by a semshi.BufferHandler instance.)
     """
-    # File pattern when to attach event handlers
-    _pattern = '*.py'
 
     def __init__(self, vim):
         self._vim = vim
-        self._active = None
         self._handlers = {}
         self._cur_handler = None
         self._options = None
@@ -64,10 +52,6 @@ class Plugin:
         __init__ because vim itself may not be fully started up.
         """
         self._options = Options(self._vim)
-        if not self._options.active:
-            return
-        self._switch_handler()
-        self._update_viewport()
 
     def echo(self, *msgs):
         msg = ' '.join([str(m) for m in msgs])
@@ -77,59 +61,34 @@ class Plugin:
         msg = ' '.join([str(m) for m in msgs])
         self._vim.err_write(msg + '\n')
 
-    # Must not be async because we have to make sure that switching the buffer
-    # handler is completed before other events are handled.
-    @neovim.autocmd('BufEnter', pattern=_pattern, sync=True)
-    @if_active
-    def event_buf_enter(self):
-        self._switch_handler()
-        if self._cur_handler.enabled:
-            self._update_viewport()
-            self._cur_handler.update()
+    # Must not be async here because we have to make sure that switching the
+    # buffer handler is completed before other events are handled.
+    @neovim.function('SemshiBufEnter', sync=True)
+    def event_buf_enter(self, _):
+        self._select_handler()
+        self._update_viewport()
+        self._cur_handler.update()
 
-    @neovim.autocmd('FileType', pattern='python', sync=True)
-    @if_active
-    def event_file_type(self):
-        if self._cur_handler.enabled:
-            self._update_viewport()
-            self._mark_selected()
+    @neovim.function('SemshiBufLeave', sync=True)
+    def event_buf_leave(self, _):
+        self._cur_handler = None
 
-    @neovim.autocmd('VimResized', pattern=_pattern, sync=False)
-    @if_active
-    def event_vim_resized(self):
-        if self._cur_handler.enabled:
-            self._update_viewport()
-            self._mark_selected()
+    @neovim.function('SemshiVimResized', sync=False)
+    def event_vim_resized(self, _):
+        self._update_viewport()
+        self._mark_selected()
 
-    @neovim.autocmd('CursorMoved', pattern=_pattern, sync=False)
-    @if_active
-    def event_cursor_moved(self):
-        if self._cur_handler.enabled:
-            self._update_viewport()
-            self._mark_selected()
+    @neovim.function('SemshiCursorMoved', sync=False)
+    def event_cursor_moved(self, _):
+        self._update_viewport()
+        self._mark_selected()
 
-    @neovim.autocmd('CursorMovedI', pattern=_pattern, sync=False)
-    @if_active
-    def event_cursor_moved_insert(self):
-        if self._cur_handler.enabled:
-            self._update_viewport()
-            self._mark_selected()
+    @neovim.function('SemshiTextChanged', sync=False)
+    def event_text_changed(self, _):
+        self._cur_handler.update()
 
-    @neovim.autocmd('TextChanged', pattern=_pattern, sync=False)
-    @if_active
-    def event_text_changed(self):
-        if self._cur_handler.enabled:
-            self._cur_handler.update()
-
-    @neovim.autocmd('TextChangedI', pattern=_pattern, sync=False)
-    @if_active
-    def event_text_changed_insert(self):
-        if self._cur_handler.enabled:
-            self._cur_handler.update()
-
-    @neovim.autocmd('VimLeave', pattern=_pattern, sync=True)
-    @if_active
-    def event_vim_leave(self):
+    @neovim.function('SemshiVimLeave', sync=True)
+    def event_vim_leave(self, _):
         self._cur_handler.shutdown()
 
     @neovim.command('Semshi', nargs='*', complete='customlist,SemshiComplete',
@@ -161,47 +120,61 @@ class Plugin:
 
     @subcommand
     def enable(self):
+        self._attach_listeners()
+        self._select_handler()
         self._update_viewport()
-        self._cur_handler.enabled = True
         self.highlight()
 
-    @subcommand
+    @subcommand(needs_handler=True)
     def disable(self):
-        self._cur_handler.enabled = False
         self.clear()
+        self._detach_listeners()
+        self._cur_handler = None
+        del self._handlers[self._vim.current.buffer]
 
     @subcommand
     def toggle(self):
-        if self._cur_handler.enabled:
+        if self._listeners_attached():
             self.disable()
         else:
             self.enable()
 
-    @subcommand
+    @subcommand(needs_handler=True)
     def pause(self):
-        self._cur_handler.enabled = False
+        self._detach_listeners()
 
-    @subcommand
+    @subcommand(needs_handler=True, silent_fail=False)
     def highlight(self):
         self._cur_handler.update(force=True, sync=True)
 
-    @subcommand
+    @subcommand(needs_handler=True)
     def clear(self):
         self._cur_handler.clear_highlights()
 
-    @subcommand
+    @subcommand(needs_handler=True, silent_fail=False)
     def rename(self, new_name=None):
         self._cur_handler.rename(self._vim.current.window.cursor, new_name)
 
-    @subcommand
+    @subcommand(needs_handler=True, silent_fail=False)
     def goto(self, *args, **kwargs):
         self._cur_handler.goto(*args, **kwargs)
 
-    @subcommand
+    @subcommand(needs_handler=True, silent_fail=False)
     def error(self):
         self._cur_handler.show_error()
 
-    def _switch_handler(self):
+    @subcommand
+    def status(self):
+        self.echo(
+            'current handler: {handler}\n'
+            'handlers: {handlers}'
+            .format(
+                handler=self._cur_handler,
+                handlers=self._handlers
+            )
+        )
+
+    def _select_handler(self):
         buf = self._vim.current.buffer
         try:
             handler = self._handlers[buf]
@@ -211,6 +184,7 @@ class Plugin:
         self._cur_handler = handler
 
     def _update_viewport(self):
+        # TODO Doesn't this cause a roundtrip?
         start = self._vim.eval('line("w0")')
         stop = self._vim.eval('line("w$")')
         self._cur_handler.viewport(start, stop)
@@ -220,6 +194,17 @@ class Plugin:
             return
         self._cur_handler.mark_selected(self._vim.current.window.cursor)
 
+    def _attach_listeners(self):
+        self._vim.call('semshi#buffer_attach')
+
+    def _detach_listeners(self):
+        self._vim.call('semshi#buffer_detach')
+
+    def _listeners_attached(self):
+        """Return whether event listeners are attached to the current buffer.
+        """
+        return self._vim.eval('get(b:, "semshi_attached", v:false)')
+
 
 class Options:
     """Plugin options.
@@ -227,8 +212,7 @@ class Options:
     The options will only be read and set once on init.
     """
     _defaults = {
-        'active': True,
-        'excluded_buffers': [],
+        'filetypes': ['python'],
         'excluded_hl_groups': ['local'],
         'mark_selected_nodes': 1,
         'no_default_builtin_highlight': True,
@@ -259,4 +243,5 @@ class Options:
         try:
             return [hl_groups[g] for g in items]
         except KeyError as e:
+            # TODO Use err_write instead?
             raise Exception('"%s" is an unknown highlight group.' % e.args[0])
