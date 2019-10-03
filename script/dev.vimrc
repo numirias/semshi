@@ -20,7 +20,10 @@ let mapleader = ','
 
 noremap <silent> <S-j> 4j
 noremap <silent> <S-k> 4k
-noremap <silent> <Leader>q :q<CR>
+noremap <silent> q :q<CR>
+noremap <silent> Q :qa!<CR>
+noremap <silent><C-tab> :bnext<CR>
+noremap <silent><C-S-tab> :bprev<CR>
 
 
 function! SynStack()

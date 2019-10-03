@@ -17,7 +17,7 @@ sign define semshiError text=E> texthl=semshiErrorSign
 
 " These options can't be initialized in the Python plugin since they must be
 " known immediately.
-let g:semshi#active = get(g:, 'semshi#active', v:true)
+let g:semshi#filetypes = get(g:, 'semshi#filetypes', ['python'])
 let g:semshi#simplify_markup = get(g:, 'semshi#simplify_markup', v:true)
 let g:semshi#no_default_builtin_highlight = get(g:, 'semshi#no_default_builtin_highlight', v:true)
 
@@ -60,6 +60,51 @@ function! s:remove_builtin_extra()
     hi link pythonKeyword pythonNumber
 endfunction
 
+function! s:filetype_changed()
+    let l:ft = expand('<amatch>')
+    if index(g:semshi#filetypes, l:ft) != -1
+        if !get(b:, 'semshi_attached', v:false)
+            Semshi enable
+        endif
+    else
+        if get(b:, 'semshi_attached', v:false)
+            Semshi disable
+        endif
+    endif
+endfunction
+
+function! semshi#buffer_attach()
+    if get(b:, 'semshi_attached', v:false)
+        return
+    endif
+    let b:semshi_attached = v:true
+    augroup SemshiEvents
+        autocmd BufEnter <buffer> call SemshiBufEnter()
+        autocmd BufLeave <buffer> call SemshiBufLeave()
+        autocmd VimResized <buffer> call SemshiVimResized()
+        autocmd VimLeave <buffer> call SemshiVimLeave()
+        autocmd TextChanged <buffer> call SemshiTextChanged()
+        autocmd TextChangedI <buffer> call SemshiTextChanged()
+        autocmd CursorMoved <buffer> call SemshiCursorMoved()
+        autocmd CursorMovedI <buffer> call SemshiCursorMoved()
+    augroup END
+    call SemshiBufEnter()
+endfunction
+
+function! semshi#buffer_detach()
+    let b:semshi_attached = v:false
+    augroup SemshiEvents
+        autocmd! BufEnter <buffer>
+        autocmd! BufLeave <buffer>
+        autocmd! VimResized <buffer>
+        autocmd! VimLeave <buffer>
+        autocmd! TextChanged <buffer>
+        autocmd! TextChangedI <buffer>
+        autocmd! CursorMoved <buffer>
+        autocmd! CursorMovedI <buffer>
+    augroup END
+endfunction
+
 function! semshi#init()
     if g:semshi#no_default_builtin_highlight
         call s:disable_builtin_highlights()
@@ -67,8 +112,8 @@ function! semshi#init()
     if g:semshi#simplify_markup
         call s:simplify_markup()
     endif
+
+    autocmd FileType * call s:filetype_changed()
 endfunction
 
-if g:semshi#active
-    call semshi#init()
-endif
+call semshi#init()

@@ -6,7 +6,6 @@ import pytest
 from .conftest import parse, dump_symtable
 
 
-@pytest.mark.fuzz
 def test_multiple_files():
     """Attempt to parse random Python files."""
     for root, dirs, files in os.walk('/usr/lib/python3.8/'):
