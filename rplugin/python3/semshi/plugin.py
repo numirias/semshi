@@ -13,7 +13,12 @@ _subcommands = {}
 
 
 def subcommand(func=None, needs_handler=False, silent_fail=True):
-    """Decorator to register `func` as a ":Semshi [...]" subcommand."""
+    """Decorator to register `func` as a ":Semshi [...]" subcommand.
+
+    If `needs_handler`, the subcommand will fail if no buffer handler is
+    currently active. If `silent_fail`, it will fail silently, otherwise an
+    error message is printed.
+    """
     if func is None:
         return partial(
             subcommand, needs_handler=needs_handler, silent_fail=silent_fail)
@@ -41,7 +46,9 @@ class Plugin:
 
     def __init__(self, vim):
         self._vim = vim
+        # A mapping (buffer number -> buffer handler)
         self._handlers = {}
+        # The currently active buffer handler
         self._cur_handler = None
         self._options = None
 
@@ -64,14 +71,18 @@ class Plugin:
     # Must not be async here because we have to make sure that switching the
     # buffer handler is completed before other events are handled.
     @neovim.function('SemshiBufEnter', sync=True)
-    def event_buf_enter(self, _):
-        self._select_handler()
+    def event_buf_enter(self, args):
+        self._select_handler(args[0])
         self._update_viewport()
         self._cur_handler.update()
 
     @neovim.function('SemshiBufLeave', sync=True)
     def event_buf_leave(self, _):
         self._cur_handler = None
+
+    @neovim.function('SemshiBufWipeout', sync=True)
+    def event_buf_wipeout(self, args):
+        self._remove_handler(args[0])
 
     @neovim.function('SemshiVimResized', sync=False)
     def event_vim_resized(self, _):
@@ -87,9 +98,10 @@ class Plugin:
     def event_text_changed(self, _):
         self._cur_handler.update()
 
-    @neovim.function('SemshiVimLeave', sync=True)
-    def event_vim_leave(self, _):
-        self._cur_handler.shutdown()
+    @neovim.autocmd('VimLeave', sync=True)
+    def event_vim_leave(self):
+        for handler in self._handlers.values():
+            handler.shutdown()
 
     @neovim.command('Semshi', nargs='*', complete='customlist,SemshiComplete',
                     sync=True)
@@ -121,7 +133,7 @@ class Plugin:
     @subcommand
     def enable(self):
         self._attach_listeners()
-        self._select_handler()
+        self._select_handler(self._vim.current.buffer)
         self._update_viewport()
         self.highlight()
 
@@ -130,7 +142,7 @@ class Plugin:
         self.clear()
         self._detach_listeners()
         self._cur_handler = None
-        del self._handlers[self._vim.current.buffer]
+        self._remove_handler(self._vim.current.buffer)
 
     @subcommand
     def toggle(self):
@@ -174,14 +186,35 @@ class Plugin:
             )
         )
 
-    def _select_handler(self):
-        buf = self._vim.current.buffer
+    def _select_handler(self, buf_or_buf_num):
+        """Select handler for `buf_or_buf_num`."""
+        if isinstance(buf_or_buf_num, int):
+            buf = None
+            buf_num = buf_or_buf_num
+        else:
+            buf = buf_or_buf_num
+            buf_num = buf.number
         try:
-            handler = self._handlers[buf]
+            handler = self._handlers[buf_num]
         except KeyError:
+            if buf is None:
+                buf = self._vim.buffers[buf_num]
             handler = BufferHandler(buf, self._vim, self._options)
-            self._handlers[buf] = handler
+            self._handlers[buf_num] = handler
         self._cur_handler = handler
+
+    def _remove_handler(self, buf_or_buf_num):
+        """Remove handler for buffer with the number `buf_num`."""
+        if isinstance(buf_or_buf_num, int):
+            buf_num = buf_or_buf_num
+        else:
+            buf_num = buf_or_buf_num.number
+        try:
+            handler = self._handlers.pop(buf_num)
+        except KeyError:
+            return
+        else:
+            handler.shutdown()
 
     def _update_viewport(self):
         # TODO Doesn't this cause a roundtrip?

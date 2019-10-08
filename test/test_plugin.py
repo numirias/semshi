@@ -142,6 +142,15 @@ def test_switch_handler(vim, tmp_path):
     assert not vim.host_eval('plugin._cur_handler is None')
 
 
+def test_wipe_buffer(vim, tmp_path):
+    """When a buffer is wiped out, the handler should be removed."""
+    assert vim.host_eval('len(plugin._handlers)') == 0
+    vim.command('edit %s' % (tmp_path / 'foo.py'))
+    assert vim.host_eval('len(plugin._handlers)') == 1
+    vim.command('bwipeout %s' % (tmp_path / 'foo.py'))
+    assert vim.host_eval('len(plugin._handlers)') == 0
+
+
 def test_selected_nodes(vim, tmp_path):
     """When moving the cursor above a node, it's registered as selected"""
     node_positions = lambda: vim.host_eval('[n.pos for n in plugin._cur_handler._selected_nodes]')
