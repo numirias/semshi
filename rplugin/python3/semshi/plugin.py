@@ -72,8 +72,9 @@ class Plugin:
     # buffer handler is completed before other events are handled.
     @neovim.function('SemshiBufEnter', sync=True)
     def event_buf_enter(self, args):
-        self._select_handler(args[0])
-        self._update_viewport()
+        buf_num, view_start, view_stop = args
+        self._select_handler(buf_num)
+        self._update_viewport(view_start, view_stop)
         self._cur_handler.update()
 
     @neovim.function('SemshiBufLeave', sync=True)
@@ -85,13 +86,13 @@ class Plugin:
         self._remove_handler(args[0])
 
     @neovim.function('SemshiVimResized', sync=False)
-    def event_vim_resized(self, _):
-        self._update_viewport()
+    def event_vim_resized(self, args):
+        self._update_viewport(*args)
         self._mark_selected()
 
     @neovim.function('SemshiCursorMoved', sync=False)
-    def event_cursor_moved(self, _):
-        self._update_viewport()
+    def event_cursor_moved(self, args):
+        self._update_viewport(*args)
         self._mark_selected()
 
     @neovim.function('SemshiTextChanged', sync=False)
@@ -134,7 +135,7 @@ class Plugin:
     def enable(self):
         self._attach_listeners()
         self._select_handler(self._vim.current.buffer)
-        self._update_viewport()
+        self._update_viewport(*self._vim.eval('[line("w0"), line("w$")]'))
         self.highlight()
 
     @subcommand(needs_handler=True)
@@ -216,10 +217,7 @@ class Plugin:
         else:
             handler.shutdown()
 
-    def _update_viewport(self):
-        # TODO Doesn't this cause a roundtrip?
-        start = self._vim.eval('line("w0")')
-        stop = self._vim.eval('line("w$")')
+    def _update_viewport(self, start, stop):
         self._cur_handler.viewport(start, stop)
 
     def _mark_selected(self):
