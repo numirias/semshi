@@ -5,19 +5,24 @@ from ast import (AsyncFunctionDef, Attribute, ClassDef, DictComp, Eq,
                  Name, NameConstant, Nonlocal, NotEq, Num, SetComp, Store, Str,
                  Try, arg)
 from itertools import count
+import sys
 from token import NAME, OP
 from tokenize import tokenize
 
 from .node import ATTRIBUTE, IMPORTED, PARAMETER_UNUSED, SELF, Node
 from .util import debug_time
 
-
 # Node types which introduce a new scope
 BLOCKS = (Module, FunctionDef, AsyncFunctionDef, ClassDef, ListComp, DictComp,
           SetComp, GeneratorExp, Lambda)
 FUNCTION_BLOCKS = (FunctionDef, Lambda, AsyncFunctionDef)
 # Node types which don't require any action
-SKIP = (NameConstant, Str, Num, Store, Load, Eq, Lt, Gt, NotEq, LtE, GtE)
+if sys.version_info < (3, 8):
+    SKIP = (NameConstant, Str, Num)
+else:
+    from ast import Constant # pylint: disable=ungrouped-imports
+    SKIP = (Constant,)
+SKIP += (Store, Load, Eq, Lt, Gt, NotEq, LtE, GtE)
 
 
 def tokenize_lines(lines):
@@ -197,6 +202,13 @@ class Visitor:
 
     def _visit_args(self, node):
         """Visit function arguments."""
+        # We'd want to visit args.posonlyargs, but it appears an internal bug
+        # is preventing that. See: https://stackoverflow.com/q/59066024/5765873
+        for arg in node.args.posonlyargs:
+            del arg.annotation
+        self._visit_args_pre38(node)
+
+    def _visit_args_pre38(self, node):
         args = node.args
         for arg in args.args + args.kwonlyargs + [args.vararg, args.kwarg]:
             if arg is None:
@@ -342,6 +354,7 @@ class Visitor:
         """
         # The first argument...
         try:
+            # TODO Does this break with posonlyargs?
             arg = node.args.args[0]
         except IndexError:
             return
@@ -399,3 +412,8 @@ class Visitor:
             # much more expensive that is, though.
             elif value_type not in (str, int, bytes):
                 self.visit(value)
+
+
+if sys.version_info < (3, 8):
+    # pylint: disable=protected-access
+    Visitor._visit_args = Visitor._visit_args_pre38

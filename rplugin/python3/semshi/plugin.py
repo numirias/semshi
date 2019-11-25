@@ -144,6 +144,14 @@ class Plugin:
         lead, *_ = arg
         return [c for c in _subcommands if c.startswith(lead)]
 
+    @neovim.function('SemshiInternalEval', sync=True)
+    def _internal_eval(self, args):
+        """Eval Python code in plugin context.
+
+        Only used for testing."""
+        plugin = self # noqa pylint: disable=unused-variable
+        return eval(args[0]) # pylint: disable=eval-used
+
     @subcommand
     def enable(self):
         self._update_viewport()

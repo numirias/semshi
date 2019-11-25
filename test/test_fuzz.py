@@ -8,8 +8,8 @@ from .conftest import parse, dump_symtable
 
 @pytest.mark.fuzz
 def test_multiple_files():
-    """Fuzzing tests against lots of different files."""
-    for root, dirs, files in os.walk('/usr/lib/python3.6/'):
+    """Attempt to parse random Python files."""
+    for root, dirs, files in os.walk('/usr/lib/python3.8/'):
         for file in files:
             if not file.endswith('.py'):
                 continue

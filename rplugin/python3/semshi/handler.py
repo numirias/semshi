@@ -331,6 +331,7 @@ class BufferHandler:
         if what == 'error':
             self._goto_error()
             return
+        # pylint: disable=import-outside-toplevel
         from ast import ClassDef, FunctionDef, AsyncFunctionDef
         here = tuple(self._vim.current.window.cursor)
         if what == 'name':
