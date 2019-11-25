@@ -1,11 +1,17 @@
 import os
+from pathlib import Path
+import sys
 from textwrap import dedent
-import pytest
-from semshi.node import Node, group, UNRESOLVED, FREE, SELF, PARAMETER, PARAMETER_UNUSED, BUILTIN, GLOBAL, LOCAL, IMPORTED, ATTRIBUTE
-from semshi.parser import Parser, UnparsableError
-from semshi import parser
 
-from .conftest import parse, make_parser, make_tree
+import pytest
+
+from semshi import parser
+from semshi.node import (ATTRIBUTE, BUILTIN, FREE, GLOBAL, IMPORTED, LOCAL,
+                         PARAMETER, PARAMETER_UNUSED, SELF, UNRESOLVED, Node,
+                         group)
+from semshi.parser import Parser, UnparsableError
+
+from .conftest import make_parser, make_tree, parse
 
 
 def test_group():
@@ -795,6 +801,21 @@ def test_unused_args2():
     ]
 
 
+@pytest.mark.skipif('sys.version_info < (3, 8)')
+def test_posonlyargs():
+    names = parse('def f(x, /): pass')
+    assert [n.hl_group for n in names] == [LOCAL, PARAMETER_UNUSED]
+
+
+# Fails due to what seems to be an internal bug. See:
+# https://stackoverflow.com/q/59066024/5765873
+@pytest.mark.xfail
+@pytest.mark.skipif('sys.version_info < (3, 8)')
+def test_posonlyargs_with_annotation():
+    names = parse('def f(x: y, /): pass')
+    assert [n.hl_group for n in names] == [LOCAL, UNRESOLVED, PARAMETER_UNUSED]
+
+
 class TestNode:
 
     def test_node(self):
@@ -839,3 +860,10 @@ def test_minor_change():
     assert minor_change(list('abc'), list('xbx')) == (False, None)
     assert minor_change(list('abc'), list('abcedf')) == (False, None)
     assert minor_change(list('abc'), list('abc')) == (True, None)
+
+
+def test_specific_grammar(request):
+    path = Path(request.fspath.dirname) / \
+        'data/grammar{0}{1}.py'.format(*sys.version_info[:2])
+    with open(str(path)) as f:
+        parse(f.read())

@@ -48,17 +48,8 @@ class WrappedVim:
     def __getattr__(self, item):
         return getattr(self._vim, item)
 
-    def host_eval(self, code, tick=False):
-        if tick:
-            self.wait_for_tick()
-        return self._vim.call('TestHelperEvalPython', code)
-
-    def wait_for_tick(self):
-        tick = self.host_eval('plugin._cur_handler._parser.tick')
-        wait_for(
-            lambda: self.host_eval('plugin._cur_handler._parser.tick'),
-            lambda x: x > tick
-        )
+    def host_eval(self, code):
+        return self._vim.call('SemshiInternalEval', code)
 
     def wait_for_update_thread(self):
         wait_for(
@@ -91,6 +82,7 @@ def test_commands(vim):
     vim.command('Semshi')
 
 
+@pytest.mark.xfail
 def test_no_python_file(vim):
     """If no Python file is open, Semshi doesn't handle the current file"""
     assert vim.host_eval('plugin._cur_handler is None')
@@ -292,7 +284,6 @@ def test_option_excluded_buffers():
 def test_rename():
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa, aaa, bbb', 'aaa']
-    vim.wait_for_tick()
     time.sleep(SLEEP)
     vim.command('Semshi rename xxyyzz')
     time.sleep(SLEEP)
@@ -329,7 +320,6 @@ def test_goto():
 def test_goto_name():
     vim = start_vim(file='')
     vim.current.buffer[:] = ['aaa, aaa, aaa']
-    vim.wait_for_tick()
     time.sleep(SLEEP)
     vim.command('Semshi goto name next')
     wait_for(lambda: vim.current.window.cursor == [1, 5])

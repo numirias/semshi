@@ -3,12 +3,13 @@ python:
   - "3.5"
   - "3.6"
   - "3.7-dev"
+  - "3.8-dev"
 jobs:
   include:
-  - python: 3.6
+  - python: 3.7
     env: TOXENV=lint
 before_install:
-  - wget -O nvim https://github.com/neovim/neovim/releases/download/v0.3.1/nvim.appimage
+  - wget -O nvim https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
   - chmod +x nvim
   - export PATH="$PATH:."
 install:
