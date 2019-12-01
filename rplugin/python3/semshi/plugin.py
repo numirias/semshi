@@ -76,6 +76,7 @@ class Plugin:
         self._select_handler(buf_num)
         self._update_viewport(view_start, view_stop)
         self._cur_handler.update()
+        self._mark_selected()
 
     @neovim.function('SemshiBufLeave', sync=True)
     def event_buf_leave(self, _):
@@ -92,11 +93,18 @@ class Plugin:
 
     @neovim.function('SemshiCursorMoved', sync=False)
     def event_cursor_moved(self, args):
+        if self._cur_handler is None:
+            # CursorMoved may trigger before BufEnter, so select the buffer if
+            # we didn't enter it yet.
+            self.event_buf_enter((self._vim.current.buffer.number, *args))
+            return
         self._update_viewport(*args)
         self._mark_selected()
 
     @neovim.function('SemshiTextChanged', sync=False)
     def event_text_changed(self, _):
+        # Note: TextChanged event doesn't trigger if text was changed in
+        # unfocused buffer via e.g. nvim_buf_set_lines().
         self._cur_handler.update()
 
     @neovim.autocmd('VimLeave', sync=True)
