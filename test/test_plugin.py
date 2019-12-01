@@ -144,11 +144,22 @@ def test_switch_handler(vim, tmp_path):
 
 def test_wipe_buffer(vim, tmp_path):
     """When a buffer is wiped out, the handler should be removed."""
+    # Without calling a Semshi command first, the subsequent assertions
+    # accessing the plugin may fail
+    vim.command('Semshi')
     assert vim.host_eval('len(plugin._handlers)') == 0
     vim.command('edit %s' % (tmp_path / 'foo.py'))
     assert vim.host_eval('len(plugin._handlers)') == 1
     vim.command('bwipeout %s' % (tmp_path / 'foo.py'))
     assert vim.host_eval('len(plugin._handlers)') == 0
+
+
+def test_cursormoved_before_bufenter(vim, tmp_path):
+    """When CursorMoved is triggered before BufEnter, switch the buffer."""
+    vim.command('edit %s' % (tmp_path / 'foo.py'))
+    vim.command('new %s' % (tmp_path / 'bar.py'))
+    vim.command('q')
+    assert vim.host_eval('plugin._cur_handler._buf_num') == 1
 
 
 def test_selected_nodes(vim, tmp_path):
