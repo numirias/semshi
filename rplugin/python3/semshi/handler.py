@@ -170,8 +170,6 @@ class BufferHandler:
             # Update highlights by adding all new visible nodes and removing
             # all old nodes which have been drawn earlier
             self._update_hls(add_visible, rem_remaining)
-            self.mark_selected(
-                self._wait_for(lambda: self._vim.current.window.cursor, sync))
         if self._options.error_sign:
             self._schedule_update_error_sign()
 
