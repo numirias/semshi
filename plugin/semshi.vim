@@ -93,13 +93,7 @@ endfunction
 function! semshi#buffer_detach()
     let b:semshi_attached = v:false
     augroup SemshiEvents
-        autocmd! BufEnter <buffer>
-        autocmd! BufLeave <buffer>
-        autocmd! VimResized <buffer>
-        autocmd! TextChanged <buffer>
-        autocmd! TextChangedI <buffer>
-        autocmd! CursorMoved <buffer>
-        autocmd! CursorMovedI <buffer>
+        autocmd! * <buffer>
     augroup END
 endfunction
 
