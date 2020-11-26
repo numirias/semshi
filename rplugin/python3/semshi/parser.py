@@ -47,7 +47,7 @@ class Parser:
             return self._parse(*args, **kwargs)
         except (SyntaxError, RecursionError) as e:
             logger.debug('parsing error: %s', e)
-            raise UnparsableError(e)
+            raise UnparsableError(e) from e
         finally:
             self.tick += 1
 
@@ -135,7 +135,7 @@ class Parser:
         new_code = lines_to_code(new_lines)
         try:
             ast_root = self._make_ast(new_code)
-        except SyntaxError:
+        except SyntaxError as exc:
             # Restore original line
             new_lines[error_idx] = orig_line
             # Fixing the line of the syntax error failed, so try again with the
@@ -143,14 +143,14 @@ class Parser:
             if change_lineno is None or change_lineno == error_idx:
                 # Don't try to fix the changed line if it's unknown or the same
                 # as the one we tried to fix before.
-                raise orig_error
+                raise orig_error from exc
             new_lines[change_lineno] = self._fix_line(new_lines[change_lineno])
             new_code = lines_to_code(new_lines)
             try:
                 ast_root = self._make_ast(new_code)
             except SyntaxError:
                 # All fixing attempts failed, so raise original syntax error.
-                raise orig_error
+                raise orig_error from exc
         return ast_root, new_code, new_lines, orig_error
 
     @staticmethod
