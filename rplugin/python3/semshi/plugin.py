@@ -285,4 +285,6 @@ class Options:
             return [hl_groups[g] for g in items]
         except KeyError as e:
             # TODO Use err_write instead?
-            raise Exception('"%s" is an unknown highlight group.' % e.args[0])
+            raise Exception(
+                '"%s" is an unknown highlight group.' % e.args[0]
+            ) from e
