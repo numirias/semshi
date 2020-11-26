@@ -53,10 +53,12 @@ class Node:
         else:
             try:
                 self.symbol = self.env[-1].lookup(self.symname)
-            except KeyError:
+            except KeyError as exc:
                 # Set dummy hl group, so all fields in __repr__ are defined.
                 self.hl_group = '?'
-                raise Exception('%s can\'t lookup "%s"' % (self, self.symname))
+                raise Exception(
+                    '%s can\'t lookup "%s"' % (self, self.symname)
+                ) from exc
         if hl_group is not None:
             self.hl_group = hl_group
         else:
