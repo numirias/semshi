@@ -178,7 +178,7 @@ Semshi should be snappy on reasonably-sized Python files with ordinary hardware.
 Completion triggers may block Semshi from highlighting instantly. Try to increase Deoplete's `auto_complete_delay`, e.g.:
 
 ```VimL
-let g:deoplete#auto_complete_delay = 100
+call deoplete#custom#option('auto_complete_delay', 100)
 ```
 
 ### There are some incorrect extra highlights.
