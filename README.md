@@ -36,7 +36,7 @@ In the above example, you can easily distinguish arguments (blue), instance attr
     
 - Add `numirias/semshi` via your plugin manager. If you're using [vim-plug](https://github.com/junegunn/vim-plug), add... 
 
-      Plug 'numirias/semshi', {'do': ':UpdateRemotePlugins'}
+      Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins' }
       
   ...and run `:PlugInstall`.
 
