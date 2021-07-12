@@ -103,10 +103,10 @@ class Plugin:
 
     @neovim.function('SemshiTextChanged', sync=False)
     def event_text_changed(self, _):
-        # Note: TextChanged event doesn't trigger if text was changed in
-        # unfocused buffer via e.g. nvim_buf_set_lines().
         if self._cur_handler is None:
             return
+        # Note: TextChanged event doesn't trigger if text was changed in
+        # unfocused buffer via e.g. nvim_buf_set_lines().
         self._cur_handler.update()
 
     @neovim.autocmd('VimLeave', sync=True)
