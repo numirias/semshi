@@ -81,7 +81,7 @@ class Node:
         return '<%s %s %s (%s, %s) %d>' % (
             self.name,
             self.hl_group[6:],
-            '.'.join([x.get_name() for x in self.env]),
+            '.'.join(x.get_name() for x in self.env),
             self.lineno,
             self.col,
             self.id,

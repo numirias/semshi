@@ -338,8 +338,8 @@ class BufferHandler:
             cur_node = self._parser.node_at(here)
             if cur_node is None:
                 return
-            locs = sorted([n.pos for n in self._parser.same_nodes(
-                cur_node, use_target=self._options.self_to_attribute)])
+            locs = sorted(n.pos for n in self._parser.same_nodes(
+                cur_node, use_target=self._options.self_to_attribute))
         elif what == 'class':
             locs = self._parser.locations_by_node_types([ClassDef])
         elif what == 'function':

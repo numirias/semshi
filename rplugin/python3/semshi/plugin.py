@@ -61,11 +61,11 @@ class Plugin:
         self._options = Options(self._vim)
 
     def echo(self, *msgs):
-        msg = ' '.join([str(m) for m in msgs])
+        msg = ' '.join(str(m) for m in msgs)
         self._vim.out_write(msg + '\n')
 
     def echo_error(self, *msgs):
-        msg = ' '.join([str(m) for m in msgs])
+        msg = ' '.join(str(m) for m in msgs)
         self._vim.err_write(msg + '\n')
 
     # Must not be async here because we have to make sure that switching the
