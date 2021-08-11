@@ -36,7 +36,7 @@ In the above example, you can easily distinguish arguments (blue), instance attr
     
 - Add `numirias/semshi` via your plugin manager. If you're using [vim-plug](https://github.com/junegunn/vim-plug), add... 
 
-      Plug 'numirias/semshi', {'do': ':UpdateRemotePlugins'}
+      Plug 'numirias/semshi', { 'do': ':UpdateRemotePlugins' }
       
   ...and run `:PlugInstall`.
 
@@ -176,6 +176,12 @@ Semshi should be snappy on reasonably-sized Python files with ordinary hardware.
 ### Semshi is slow together with [deoplete.nvim](https://github.com/Shougo/deoplete.nvim).
 
 Completion triggers may block Semshi from highlighting instantly. Try to increase Deoplete's `auto_complete_delay`, e.g.:
+
+```VimL
+call deoplete#custom#option('auto_complete_delay', 100)
+```
+
+Or in older (<=5.2) Deoplete versions:
 
 ```VimL
 let g:deoplete#auto_complete_delay = 100
