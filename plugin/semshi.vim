@@ -99,6 +99,9 @@ function! semshi#buffer_detach()
 endfunction
 
 function! semshi#init()
+    if !exists('g:loaded_remote_plugins')
+      runtime! plugin/rplugin.vim
+    endif
     if g:semshi#no_default_builtin_highlight
         call s:disable_builtin_highlights()
     endif
