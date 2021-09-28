@@ -1,20 +1,3 @@
-hi def semshiLocal           ctermfg=209 guifg=#ff875f
-hi def semshiGlobal          ctermfg=214 guifg=#ffaf00
-hi def semshiImported        ctermfg=214 guifg=#ffaf00 cterm=bold gui=bold
-hi def semshiParameter       ctermfg=75  guifg=#5fafff
-hi def semshiParameterUnused ctermfg=117 guifg=#87d7ff cterm=underline gui=underline
-hi def semshiFree            ctermfg=218 guifg=#ffafd7
-hi def semshiBuiltin         ctermfg=207 guifg=#ff5fff
-hi def semshiAttribute       ctermfg=49  guifg=#00ffaf
-hi def semshiSelf            ctermfg=249 guifg=#b2b2b2
-hi def semshiUnresolved      ctermfg=226 guifg=#ffff00 cterm=underline gui=underline
-hi def semshiSelected        ctermfg=231 guifg=#ffffff ctermbg=161 guibg=#d7005f
-
-hi def semshiErrorSign       ctermfg=231 guifg=#ffffff ctermbg=160 guibg=#d70000
-hi def semshiErrorChar       ctermfg=231 guifg=#ffffff ctermbg=160 guibg=#d70000
-sign define semshiError text=E> texthl=semshiErrorSign
-
-
 " These options can't be initialized in the Python plugin since they must be
 " known immediately.
 let g:semshi#filetypes = get(g:, 'semshi#filetypes', ['python'])
@@ -99,15 +82,35 @@ function! semshi#buffer_detach()
 endfunction
 
 function! semshi#init()
-    if g:semshi#no_default_builtin_highlight
-        call s:disable_builtin_highlights()
-    endif
-    if g:semshi#simplify_markup
-        call s:simplify_markup()
-    endif
+    hi def semshiLocal           ctermfg=209 guifg=#ff875f
+    hi def semshiGlobal          ctermfg=214 guifg=#ffaf00
+    hi def semshiImported        ctermfg=214 guifg=#ffaf00 cterm=bold gui=bold
+    hi def semshiParameter       ctermfg=75  guifg=#5fafff
+    hi def semshiParameterUnused ctermfg=117 guifg=#87d7ff cterm=underline gui=underline
+    hi def semshiFree            ctermfg=218 guifg=#ffafd7
+    hi def semshiBuiltin         ctermfg=207 guifg=#ff5fff
+    hi def semshiAttribute       ctermfg=49  guifg=#00ffaf
+    hi def semshiSelf            ctermfg=249 guifg=#b2b2b2
+    hi def semshiUnresolved      ctermfg=226 guifg=#ffff00 cterm=underline gui=underline
+    hi def semshiSelected        ctermfg=231 guifg=#ffffff ctermbg=161 guibg=#d7005f
 
-    autocmd FileType * call s:filetype_changed()
-    autocmd BufWipeout * call SemshiBufWipeout(+expand('<abuf>'))
+    hi def semshiErrorSign       ctermfg=231 guifg=#ffffff ctermbg=160 guibg=#d70000
+    hi def semshiErrorChar       ctermfg=231 guifg=#ffffff ctermbg=160 guibg=#d70000
+    sign define semshiError text=E> texthl=semshiErrorSign
+
+    augroup SemshiInit
+        autocmd!
+        if g:semshi#no_default_builtin_highlight
+            call s:disable_builtin_highlights()
+        endif
+        if g:semshi#simplify_markup
+            call s:simplify_markup()
+        endif
+
+        autocmd ColorScheme * call semshi#init()
+        autocmd FileType * call s:filetype_changed()
+        autocmd BufWipeout * call SemshiBufWipeout(+expand('<abuf>'))
+    augroup END
 endfunction
 
 call semshi#init()
