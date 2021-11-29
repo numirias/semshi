@@ -228,12 +228,14 @@ class Plugin:
             handler.shutdown()
 
     def _update_viewport(self, start, stop):
-        self._cur_handler.viewport(start, stop)
+        if self._cur_handler:
+            self._cur_handler.viewport(start, stop)
 
     def _mark_selected(self):
         if not self._options.mark_selected_nodes:
             return
-        self._cur_handler.mark_selected(self._vim.current.window.cursor)
+        if self._cur_handler:
+            self._cur_handler.mark_selected(self._vim.current.window.cursor)
 
     def _attach_listeners(self):
         self._vim.call('semshi#buffer_attach')
