@@ -45,6 +45,10 @@ class BufferHandler:
     def __repr__(self):
         return '<BufferHandler(%d)>' % self._buf_num
 
+    def print(self, s):
+        """A debugging utility to print something into neovim's stdout."""
+        self._vim.async_call(self._vim.api.out_write, str(s) + '\n')
+
     def viewport(self, start, stop):
         """Set viewport to line range from `start` to `stop` and add highlights
         that have become visible."""
@@ -288,7 +292,16 @@ class BufferHandler:
         # Need to update in small batches to avoid
         # https://github.com/neovim/python-client/issues/310
         batch_size = 3000
-        call_atomic = self._wrap_async(self._vim.api.call_atomic)
+        def _call_atomic(call_chunk, **kwargs):
+            # when nvim_call_atomic is actually being executed
+            # (due to an asynchronous call), the buffer might be gone.
+            # To avoid 'invalid buffer id' errors, we validate the buffer.
+            if not self._vim.api.buf_is_valid(self._buf):
+                logger.debug('buffer %d was wiped out, skipping call_atomic',
+                             self._buf)
+                return None
+            return self._vim.api.call_atomic(call_chunk, **kwargs)
+        call_atomic = self._wrap_async(_call_atomic)
         for i in range(0, len(calls), batch_size):
             call_atomic(calls[i:i + batch_size], async_=True)
 
