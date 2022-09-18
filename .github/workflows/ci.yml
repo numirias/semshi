@@ -47,10 +47,18 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install tox tox-travis codecov
+          pip install pytest codecov pytest-cov
+          pip install pyproject-flake8
 
-      - name: Test with tox
-        run: tox
+      - name: Linting
+        run: |
+          pflake8 semshi/
+          # pylint semshi/
+
+      - name: Run tests
+        run: |
+          pytest -v --cov semshi/ --cov-report term-missing:skip-covered --ignore test/test_fuzz.py test/
 
       - name: Test coverage
         run: codecov
+
