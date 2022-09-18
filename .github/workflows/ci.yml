@@ -35,9 +35,15 @@ jobs:
 
       - name: Setup neovim
         run: |
-          wget -O nvim https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
-          chmod +x nvim
-          export PATH="$PATH:."
+          mkdir -p $HOME/.local/bin
+          wget -O $HOME/.local/bin/nvim https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
+          chmod +x $HOME/.local/bin/nvim
+          pip install pynvim
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Check neovim version
+        run: |
+          nvim --version
 
       - name: Install dependencies
         run: |
