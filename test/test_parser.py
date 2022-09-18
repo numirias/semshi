@@ -14,6 +14,11 @@ from semshi.parser import Parser, UnparsableError
 from .conftest import make_parser, make_tree, parse
 
 
+# top-level functions are parsed as LOCAL in python<3.7,
+# but as GLOBAL in Python 3.8.
+MODULE_FUNC = GLOBAL if sys.version_info >= (3, 8) else LOCAL
+
+
 def test_group():
     assert group('foo') == 'semshiFoo'
 
@@ -737,7 +742,10 @@ def test_exclude_types():
         b, c = 1
         a + b
     '''))
-    assert [n.name for n in add] == ['a']
+    # Python <= 3.7 parses 'a = 1' as the only GLOBAL,
+    # but Python >= 3.8 parses three GLOBALS (a, f, a).
+    # assert [n.name for n in add] == ['a']
+    assert all(n.hl_group != LOCAL for n in add)
     assert clear == []
     add, clear = parser.parse(dedent('''
     a = 1
@@ -785,8 +793,12 @@ def test_unused_args():
     async def bar(y): pass
     ''')
     assert [n.hl_group for n in names] == [
-        LOCAL, PARAMETER, PARAMETER_UNUSED, PARAMETER, PARAMETER_UNUSED,
-        PARAMETER, PARAMETER, PARAMETER_UNUSED, LOCAL, PARAMETER_UNUSED
+        # foo        a          b                 c          d
+        MODULE_FUNC, PARAMETER, PARAMETER_UNUSED, PARAMETER, PARAMETER_UNUSED,
+        # a        c
+        PARAMETER, PARAMETER,
+        # x               bar          y
+        PARAMETER_UNUSED, MODULE_FUNC, PARAMETER_UNUSED
     ]
 
 
@@ -804,7 +816,7 @@ def test_unused_args2():
 @pytest.mark.skipif('sys.version_info < (3, 8)')
 def test_posonlyargs():
     names = parse('def f(x, /): pass')
-    assert [n.hl_group for n in names] == [LOCAL, PARAMETER_UNUSED]
+    assert [n.hl_group for n in names] == [MODULE_FUNC, PARAMETER_UNUSED]
 
 
 # Fails due to what seems to be an internal bug. See:
@@ -813,7 +825,7 @@ def test_posonlyargs():
 @pytest.mark.skipif('sys.version_info < (3, 8)')
 def test_posonlyargs_with_annotation():
     names = parse('def f(x: y, /): pass')
-    assert [n.hl_group for n in names] == [LOCAL, UNRESOLVED, PARAMETER_UNUSED]
+    assert [n.hl_group for n in names] == [MODULE_FUNC, UNRESOLVED, PARAMETER_UNUSED]
 
 
 class TestNode:
