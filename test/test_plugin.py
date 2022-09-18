@@ -154,6 +154,7 @@ def test_wipe_buffer(vim, tmp_path):
     assert vim.host_eval('len(plugin._handlers)') == 0
 
 
+@pytest.mark.xfail(reason="Flaky test due to neovim.")
 def test_cursormoved_before_bufenter(vim, tmp_path):
     """When CursorMoved is triggered before BufEnter, switch the buffer."""
     vim.command('edit %s' % (tmp_path / 'foo.py'))
