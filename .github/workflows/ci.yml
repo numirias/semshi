@@ -10,7 +10,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - python-version: "3.5"
           - python-version: "3.6"
           - python-version: "3.7"
           - python-version: "3.8"

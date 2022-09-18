@@ -11,7 +11,7 @@ setup(
     version='0.1.0',
     url='https://github.com/numirias/semshi',
     license='MIT',
-    python_requires='>=3',
+    python_requires='>=3.6',
     install_requires=[
         'pytest>=3.3.2',
         'pytest-pudb',
@@ -21,7 +21,6 @@ setup(
         'Development Status :: 4 - Beta',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
