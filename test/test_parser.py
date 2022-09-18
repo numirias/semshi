@@ -445,15 +445,14 @@ def test_fstrings():
     assert [n.name for n in parse('f\'{foo}\'')] == ['foo']
 
 
-@pytest.mark.xfail
-@pytest.mark.skipif('sys.version_info < (3, 6)')
+@pytest.mark.skipif('sys.version_info < (3, 9, 7)')
 def test_fstrings_offsets():
-    # There seems to be a Python-internal bug causing expressions with format
+    # There was a Python-internal bug causing expressions with format
     # specifiers in f-strings to give wrong offsets when parsing into AST
-    # (https://bugs.python.org/issue35212). We'll have to decide whether to
-    # wait for a patch or calculate the correct offset ourselves.
-    s = 'f\'x{aa}{bbb:y}{cccc}\''
-    names = parse('f\'x{aa}{bbb:y}{cccc}\'')
+    # (https://bugs.python.org/issue35212, https://bugs.python.org/issue44885).
+    # The bug was fixed since 3.9.7+ and 3.10+ (numirias/semshi#31).
+    s = "f'x{aa}{bbb:y}{cccc}'"
+    names = parse("f'x{aa}{bbb:y}{cccc}'")
     offsets = [s.index(x) for x in 'abc']
     assert [n.col for n in names] == offsets
 
