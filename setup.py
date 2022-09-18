@@ -14,6 +14,7 @@ setup(
     python_requires='>=3',
     install_requires=[
         'pytest>=3.3.2',
+        'pytest-pudb',
         'pynvim>=0.3.1',
     ],
     classifiers=[
