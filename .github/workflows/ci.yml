@@ -34,8 +34,15 @@ jobs:
 
       - name: Setup neovim
         run: |
+          NVIM_VERSION="latest"
+          NVIM_DOWNLOAD_URL="https://github.com/neovim/neovim/releases/latest/download/nvim.appimage"
+          if [[ "${{ matrix.python-version}}" == "3.6" ]]; then
+            NVIM_VERSION="v0.6.1"
+            NVIM_DOWNLOAD_URL="https://github.com/neovim/neovim/releases/download/$NVIM_VERSION/nvim.appimage"
+          fi
+
           mkdir -p $HOME/.local/bin
-          wget -O $HOME/.local/bin/nvim https://github.com/neovim/neovim/releases/latest/download/nvim.appimage
+          wget -O $HOME/.local/bin/nvim $NVIM_DOWNLOAD_URL
           chmod +x $HOME/.local/bin/nvim
           pip install pynvim
           echo "$HOME/.local/bin" >> $GITHUB_PATH
