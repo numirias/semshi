@@ -827,6 +827,27 @@ def test_posonlyargs_with_annotation():
     assert [n.hl_group for n in names] == [MODULE_FUNC, UNRESOLVED, PARAMETER_UNUSED]
 
 
+@pytest.mark.skipif('sys.version_info < (3, 8)')
+def test_postponed_evaluation_of_annotations_pep563():
+    """Tests parsers with __future__ import annotations (PEP 563)."""
+    # see https://peps.python.org/pep-0563/
+    # see https://github.com/numirias/semshi/issues/116
+    names = parse('\n'.join([
+        'from __future__ import annotations',
+        'from typing import List, Any',
+        'a: int = 1',  # builtins
+        'b: UnknownSymbol = 2',  # non-builtins
+        'c: List[Any] = []',  # imported
+    ]))
+    assert [(n.name, n.hl_group) for n in names] == [
+        ('annotations', IMPORTED),
+        ('List', IMPORTED), ('Any', IMPORTED),
+        ('a', GLOBAL), ('int', BUILTIN),
+        ('b', GLOBAL), ('UnknownSymbol', UNRESOLVED),
+        ('c', GLOBAL), ('List', IMPORTED), ('Any', IMPORTED),
+    ]
+
+
 class TestNode:
 
     def test_node(self):
